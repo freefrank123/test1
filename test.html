@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>济小震 - AI应急求助</title>
+  <style>
+    * {margin:0; padding:0; box-sizing:border-box;}
+    body {padding:20px; font-family:Arial;}
+    .chat-section {margin:30px 0;}
+    #chat-box {
+      width:100%; height:300px;
+      border:1px solid #ddd; border-radius:8px;
+      padding:10px; overflow-y:auto;
+      background:#f9f9f9;
+    }
+    .msg {
+      margin:8px 0; padding:10px; border-radius:6px;
+      max-width:75%; line-height:1.4;
+    }
+    .msg-user {
+      background:#007bff; color:#fff;
+      margin-left:auto; text-align:right;
+    }
+    .msg-bot {
+      background:#fff; border:1px solid #eee;
+      margin-right:auto; text-align:left;
+    }
+    .loading {color:#666; font-style:italic;}
+    .chat-input {margin-top:10px; display:flex; gap:8px;}
+    #chat-input {
+      flex:1; padding:10px;
+      border:1px solid #ddd; border-radius:6px;
+      font-size:14px;
+    }
+    button {padding:10px 16px; border:none; border-radius:6px; cursor:pointer;}
+    .send-btn {background:#007bff; color:white;}
+    .clear-btn {background:#ff4444; color:white;}
+  </style>
+</head>
+<body>
+  <h2>济小震 — 智能应急求助（AI版）</h2>
+  <div class="chat-section">
+    <div id="chat-box"></div>
+    <div class="chat-input">
+      <input id="chat-input" placeholder="请输入你的问题，例如：室内地震怎么办..." autocomplete="off" onkeypress="if(event.key === 'Enter') sendMsg()">
+      <button class="send-btn" onclick="sendMsg()">发送</button>
+      <button class="clear-btn" onclick="clearChat()">清空</button>
+    </div>
+  </div>
+
+<script type="module">
+  // 导入并暴露全局函数
+  import { initChat, sendMsg, clearChat } from './js/chat.js';
+  
+  // 暴露给全局
+  window.sendMsg = sendMsg;
+  window.clearChat = clearChat;
+  
+  // 初始化
+  window.onload = () => {
+    initChat();
+    console.log("✅ 济小震AI对话已启动");
+  };
+</script>
+</body>
+</html>
