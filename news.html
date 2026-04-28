@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>地震新闻 - 济小震</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <nav class="navbar"><div class="logo"><i class="fas fa-satellite-dish"></i> 济小震</div><ul class="nav-links"><li><a href="index.html">首页</a></li><li><a href="knowledge.html">地震常识</a></li><li><a href="news.html">地震新闻</a></li><li><a href="emergency.html">应急求助</a></li><li><a href="game.html">地震小游戏</a></li></ul></nav>
+    <div class="container">
+        <!-- 历史地震搜索卡片 -->
+        <div class="card">
+            <h2><i class="fas fa-history"></i> 历史地震搜索</h2>
+            <div class="search-section">
+                <!-- 震级筛选 -->
+                <div class="filter-group">
+                    <label><i class="fas fa-ruler-combined"></i> 震级大小</label>
+                    <div class="mag-options">
+                        <label class="radio-label"><input type="radio" name="magType" value="3plus"> 3+</label>
+                        <label class="radio-label"><input type="radio" name="magType" value="5plus"> 5+</label>
+                        <label class="radio-label"><input type="radio" name="magType" value="custom"> 自定义</label>
+                        <div class="custom-mag" id="customMagRange" style="display: none;">
+                            <input type="number" id="minMag" placeholder="最小震级" step="0.1" min="0" max="10">
+                            <span> ~ </span>
+                            <input type="number" id="maxMag" placeholder="最大震级" step="0.1" min="0" max="10">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 日期筛选 -->
+                <div class="filter-group">
+                    <label><i class="fas fa-calendar-alt"></i> 日期范围</label>
+                    <div class="date-options">
+                        <label class="radio-label"><input type="radio" name="dateType" value="week"> 近一周</label>
+                        <label class="radio-label"><input type="radio" name="dateType" value="month"> 近一个月</label>
+                        <label class="radio-label"><input type="radio" name="dateType" value="custom"> 自定义</label>
+                        <div class="custom-date" id="customDateRange" style="display: none;">
+                            <input type="date" id="startDate"> 至 <input type="date" id="endDate">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 地理位置筛选 -->
+                <div class="filter-group">
+                    <label><i class="fas fa-globe"></i> 地理位置</label>
+                    <div class="location-options">
+                        <label class="radio-label"><input type="radio" name="locType" value="china"> 中国范围</label>
+                        <label class="radio-label"><input type="radio" name="locType" value="world"> 世界范围</label>
+                        <label class="radio-label"><input type="radio" name="locType" value="custom"> 自定义国家</label>
+                        <div class="custom-location" id="customCountry" style="display: none;">
+                            <select id="countrySelect">
+                                <option value="">请选择国家</option>
+                                <option value="中国">中国</option>
+                                <option value="日本">日本</option>
+                                <option value="印尼">印尼</option>
+                                <option value="美国">美国</option>
+                                <option value="土耳其">土耳其</option>
+                                <option value="意大利">意大利</option>
+                                <option value="墨西哥">墨西哥</option>
+                                <option value="新西兰">新西兰</option>
+                                <!-- 可继续添加更多国家 -->
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="search-actions">
+                    <button id="searchHistoryBtn" class="btn-primary"><i class="fas fa-search"></i> 搜索历史地震</button>
+                    <button id="resetFiltersBtn" class="btn-secondary">重置筛选</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 近期地震新闻卡片（高子宣调用韩佳呈接口填充） -->
+        <div class="card">
+            <h2><i class="fas fa-newspaper"></i> 近期地震新闻</h2>
+            <div id="newsList">
+                <div class="card">新闻列表加载中...</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/common.js"></script>
+    <script>
+        // 控制自定义选项的显示与隐藏
+        const magRadios = document.querySelectorAll('input[name="magType"]');
+        const customMagDiv = document.getElementById('customMagRange');
+        const dateRadios = document.querySelectorAll('input[name="dateType"]');
+        const customDateDiv = document.getElementById('customDateRange');
+        const locRadios = document.querySelectorAll('input[name="locType"]');
+        const customCountryDiv = document.getElementById('customCountry');
+
+        function toggleCustomMag() {
+            const selected = document.querySelector('input[name="magType"]:checked');
+            if (selected && selected.value === 'custom') {
+                customMagDiv.style.display = 'flex';
+            } else {
+                customMagDiv.style.display = 'none';
+            }
+        }
+        function toggleCustomDate() {
+            const selected = document.querySelector('input[name="dateType"]:checked');
+            if (selected && selected.value === 'custom') {
+                customDateDiv.style.display = 'flex';
+            } else {
+                customDateDiv.style.display = 'none';
+            }
+        }
+        function toggleCustomLoc() {
+            const selected = document.querySelector('input[name="locType"]:checked');
+            if (selected && selected.value === 'custom') {
+                customCountryDiv.style.display = 'block';
+            } else {
+                customCountryDiv.style.display = 'none';
+            }
+        }
+
+        magRadios.forEach(radio => radio.addEventListener('change', toggleCustomMag));
+        dateRadios.forEach(radio => radio.addEventListener('change', toggleCustomDate));
+        locRadios.forEach(radio => radio.addEventListener('change', toggleCustomLoc));
+        // 初始化状态
+        toggleCustomMag();
+        toggleCustomDate();
+        toggleCustomLoc();
+
+        // 搜索按钮事件（预留，高子宣可在此调用后端接口）
+        document.getElementById('searchHistoryBtn').addEventListener('click', function() {
+            // 获取筛选条件
+            let magCondition = {};
+            const magType = document.querySelector('input[name="magType"]:checked').value;
+            if (magType === '3plus') magCondition = { min: 3, max: 10 };
+            else if (magType === '5plus') magCondition = { min: 5, max: 10 };
+            else if (magType === 'custom') {
+                magCondition = {
+                    min: parseFloat(document.getElementById('minMag').value) || 0,
+                    max: parseFloat(document.getElementById('maxMag').value) || 10
+                };
+            }
+
+            let dateCondition = {};
+            const dateType = document.querySelector('input[name="dateType"]:checked').value;
+            if (dateType === 'week') {
+                const weekAgo = new Date();
+                weekAgo.setDate(weekAgo.getDate() - 7);
+                dateCondition = { start: weekAgo.toISOString().split('T')[0], end: new Date().toISOString().split('T')[0] };
+            } else if (dateType === 'month') {
+                const monthAgo = new Date();
+                monthAgo.setMonth(monthAgo.getMonth() - 1);
+                dateCondition = { start: monthAgo.toISOString().split('T')[0], end: new Date().toISOString().split('T')[0] };
+            } else if (dateType === 'custom') {
+                dateCondition = {
+                    start: document.getElementById('startDate').value,
+                    end: document.getElementById('endDate').value
+                };
+            }
+
+            let locationCondition = {};
+            const locType = document.querySelector('input[name="locType"]:checked').value;
+            if (locType === 'china') locationCondition = { region: '中国' };
+            else if (locType === 'world') locationCondition = { region: '世界' };
+            else if (locType === 'custom') {
+                locationCondition = { country: document.getElementById('countrySelect').value };
+            }
+
+            // 此处高子宣应调用韩佳呈的后端接口，将筛选条件作为参数发送
+            // 示例: fetch(`${window.JiXiaoZhen.apiBaseUrl}/history?minMag=...&maxMag=...&startDate=...&endDate=...&country=...`)
+            console.log('搜索参数：', { magCondition, dateCondition, locationCondition });
+            alert('历史地震搜索功能开发中，请等待高子宣对接后端接口。');
+        });
+
+        // 重置筛选按钮
+        document.getElementById('resetFiltersBtn').addEventListener('click', function() {
+            // 重置单选按钮到默认选项
+            document.querySelector('input[name="magType"][value="3plus"]').checked = true;
+            document.querySelector('input[name="dateType"][value="week"]').checked = true;
+            document.querySelector('input[name="locType"][value="china"]').checked = true;
+            toggleCustomMag();
+            toggleCustomDate();
+            toggleCustomLoc();
+            // 清空自定义输入
+            document.getElementById('minMag').value = '';
+            document.getElementById('maxMag').value = '';
+            document.getElementById('startDate').value = '';
+            document.getElementById('endDate').value = '';
+            document.getElementById('countrySelect').value = '';
+        });
+    </script>
+</body>
+</html>

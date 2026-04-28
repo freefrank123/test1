@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>应急求助 - 济小震</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <nav class="navbar"><div class="logo"><i class="fas fa-satellite-dish"></i> 济小震</div><ul class="nav-links"><li><a href="index.html">首页</a></li><li><a href="knowledge.html">地震常识</a></li><li><a href="news.html">地震新闻</a></li><li><a href="emergency.html">应急求助</a></li><li><a href="game.html">地震小游戏</a></li></ul></nav>
+    <div class="container">
+        <div class="card">
+            <h2><i class="fas fa-map-marked-alt"></i> 应急避难 · 智能定位</h2>
+            <div id="map-placeholder" class="map-placeholder">
+                <i class="fas fa-map" style="font-size: 3rem;"></i>
+                <p>地图区域（高子宣集成Leaflet/高德API，显示避难所）</p>
+            </div>
+            <button id="locateBtn" class="btn" style="margin-top: 1rem;"><i class="fas fa-crosshairs"></i> 定位我的位置</button>
+        </div>
+        <div class="card">
+            <h2><i class="fas fa-robot"></i> AI 应急决策助手</h2>
+            <div class="chat-placeholder" id="chatContainer">
+                <div class="message">对话记录区（高子宣实现智能回复，对接后端API）</div>
+            </div>
+            <div class="search-box"><input type="text" id="chatInput" placeholder="输入您的求助信息..."><button id="sendChatBtn">发送</button></div>
+        </div>
+    </div>
+    <script src="js/common.js"></script>
+</body>
+</html>
