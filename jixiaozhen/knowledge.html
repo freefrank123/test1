@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>地震常识 - 济小震</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo"><i class="fas fa-shield-halved"></i> 济小震 · 智防未来</div>
+        <ul class="nav-links">
+            <li><a href="index.html">首页</a></li>
+            <li><a href="knowledge.html">地震常识</a></li>
+            <li><a href="news.html">地震新闻</a></li>
+            <li><a href="emergency.html">应急求助</a></li>
+            <li><a href="game.html">地震小游戏</a></li>
+        </ul>
+        <button class="theme-toggle" id="themeToggle">
+            <i class="fas fa-moon"></i>
+        </button>
+    </nav>
+
+    <div class="container">
+        <header class="hero-card" style="padding: 2rem 2rem; margin-bottom: 2rem;">
+            <h1 style="font-size: 2.2rem;"><i class="fas fa-book-open-reader"></i> 地震知识中枢</h1>
+            <p>AI驱动的知识图谱检索 · 覆盖成因、震级、急救全维度科普</p>
+        </header>
+
+        <div class="card">
+            <h2><i class="fas fa-search"></i> 知识中枢 · 智能搜索</h2>
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="输入关键词：地震成因、震级分类、避震技巧、急救措施...">
+                <button id="searchBtn" class="btn-primary"><i class="fas fa-search"></i> 检索</button>
+            </div>
+            <div id="searchResult" style="margin-top:1.5rem;">
+                <div class="knowledge-category" data-cat="def">
+                    <h3><i class="fas fa-globe"></i> 地震科普知识</h3>
+                    <p>地震的成因、震级与烈度、地震波传播原理等基础科普内容</p>
+                </div>
+                <div class="knowledge-category" data-cat="mag">
+                    <h3><i class="fas fa-chart-line"></i> 专家文章</h3>
+                    <p>地震学专家撰写的深度分析文章与最新研究成果</p>
+                </div>
+                <div class="knowledge-category" data-cat="firstaid">
+                    <h3><i class="fas fa-hand-holding-heart"></i> 急救知识科普</h3>
+                    <p>震后自救互救、伤员转运、心理疏导等实用急救技能</p>
+                </div>
+                <div class="knowledge-category" data-cat="building">
+                    <h3><i class="fas fa-building-shield"></i> 建筑抗震</h3>
+                    <p>抗震设计原理、减隔震技术、房屋抗震加固方法</p>
+                </div>
+            </div>
+
+            <div id="quiz-container" style="margin-top: 2rem;">
+                <h3><i class="fas fa-puzzle-piece"></i> 互动测验区</h3>
+                <p style="color:var(--text-secondary);">完成知识学习后，来挑战地震知识小测验吧！</p>
+                <button id="startQuizBtn" class="btn-primary" style="margin-top:1rem;"><i class="fas fa-play"></i> 开始测验</button>
+            </div>
+        </div>
+    </div>
+
+    <footer>&copy; 2025 济小震 · 科技防灾平台 | 知识守护生命</footer>
+
+    <script src="js/common.js"></script>
+</body>
+</html>

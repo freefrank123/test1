@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>应急求助 - 济小震</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo"><i class="fas fa-shield-halved"></i> 济小震 · 智防未来</div>
+        <ul class="nav-links">
+            <li><a href="index.html">首页</a></li>
+            <li><a href="knowledge.html">地震常识</a></li>
+            <li><a href="news.html">地震新闻</a></li>
+            <li><a href="emergency.html">应急求助</a></li>
+            <li><a href="game.html">地震小游戏</a></li>
+        </ul>
+        <button class="theme-toggle" id="themeToggle">
+            <i class="fas fa-moon"></i>
+        </button>
+    </nav>
+
+    <div class="container">
+        <header class="hero-card" style="padding: 2rem 2rem; margin-bottom: 2rem;">
+            <h1 style="font-size: 2.2rem;"><i class="fas fa-life-ring"></i> 应急求助中心</h1>
+            <p>智能定位最近避难所 · AI应急助手实时解答</p>
+        </header>
+
+        <div class="card">
+            <h2><i class="fas fa-map-marked-alt"></i> 应急避难 · 智能定位</h2>
+            <div id="map-placeholder" class="map-placeholder">
+                <i class="fas fa-map" style="font-size: 3.5rem;"></i>
+                <p style="font-size:1.05rem;">地图区域 — 集成高德/Leaflet 显示周边避难所</p>
+                <p style="font-size:.85rem;opacity:.6;">高子宣对接中</p>
+            </div>
+            <div style="display:flex; gap:.8rem; margin-top:1rem;">
+                <button id="locateBtn" class="btn-primary"><i class="fas fa-crosshairs"></i> 定位我的位置</button>
+                <button id="nearbyBtn" class="btn-secondary"><i class="fas fa-list-ul"></i> 查看避难所列表</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2><i class="fas fa-robot"></i> AI 应急决策助手</h2>
+            <div class="chat-placeholder" id="chatContainer">
+                <div class="message"><i class="fas fa-robot" style="margin-right:.5rem;"></i> 你好，我是济小震AI助手。地震发生时我应该怎么做？请随时向我提问。</div>
+            </div>
+            <div class="search-box">
+                <input type="text" id="chatInput" placeholder="输入您的求助信息，如：地震时在高层如何避险...">
+                <button id="sendChatBtn" class="btn-primary"><i class="fas fa-paper-plane"></i> 发送</button>
+            </div>
+        </div>
+    </div>
+
+    <footer>&copy; 2025 济小震 · 科技防灾平台 | AI驱动 · 智慧应急</footer>
+
+    <script src="js/common.js"></script>
+</body>
+</html>
