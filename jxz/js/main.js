@@ -20,6 +20,10 @@
         if (window.JiXiaoZhen && window.JiXiaoZhen.Chat) {
           window.JiXiaoZhen.Chat.init();
         }
+        // 初始化地图模块
+        if (window.JiXiaoZhen && window.JiXiaoZhen.Map) {
+          window.JiXiaoZhen.Map.init();
+        }
         break;
 
       case 'game.html':

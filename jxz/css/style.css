@@ -560,6 +560,14 @@ body {
   color: var(--text-secondary);
   transition: all .3s ease;
 }
+
+/* 地图容器样式 */
+#map-placeholder {
+  position: relative;
+  min-height: 400px;
+  padding: 0;
+  border: none;
+}
 .map-placeholder:hover,
 .chat-placeholder:hover,
 .game-canvas-placeholder:hover {

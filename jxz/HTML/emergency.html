@@ -6,6 +6,10 @@
     <title>应急求助 - 济小震</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- 高德地图API -->
+    <script src="https://webapi.amap.com/maps?v=2.0&key=你的高德地图API Key"></script>
+    <!-- 高德地图API -->
+    <script src="https://webapi.amap.com/maps?v=2.0&key=你的高德地图API Key"></script>
 </head>
 <body>
     <nav class="navbar">
@@ -30,10 +34,9 @@
 
         <div class="card">
             <h2><i class="fas fa-map-marked-alt"></i> 应急避难 · 智能定位</h2>
-            <div id="map-placeholder" class="map-placeholder">
+            <div id="map-placeholder" class="map-placeholder" style="height: 400px;">
                 <i class="fas fa-map" style="font-size: 3.5rem;"></i>
-                <p style="font-size:1.05rem;">地图区域 — 集成高德/Leaflet 显示周边避难所</p>
-                <p style="font-size:.85rem;opacity:.6;">高子宣对接中</p>
+                <p style="font-size:1.05rem;">地图加载中...</p>
             </div>
             <div style="display:flex; gap:.8rem; margin-top:1rem;">
                 <button id="locateBtn" class="btn-primary"><i class="fas fa-crosshairs"></i> 定位我的位置</button>
@@ -58,6 +61,7 @@
     <script src="js/common.js"></script>
     <script src="js/api.js"></script>
     <script src="js/chat.js"></script>
+    <script src="js/map.js"></script>
     <script src="js/main.js"></script>
 </body>
 </html>
