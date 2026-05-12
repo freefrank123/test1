@@ -1,7 +1,11 @@
 // 济小震 · 地图模块（高德地图集成）
+// 使用 JS API Loader 加载高德地图
 (function() {
-  // 高德地图API Key（需要用户去高德地图官网申请）
-  const MAP_KEY = '你的高德地图API Key';
+  // 高德地图API Key
+  const MAP_KEY = '612fd80f25eff14e8adb151a418b2493';
+  
+  // 地图实例（通过Loader加载后初始化）
+  let AMap = null;
   
   // 模拟避难所数据（实际项目中应从后端获取）
   const SHELTER_DATA = [
@@ -17,28 +21,59 @@
   let shelterMarkers = [];
   let currentUserLocation = null;
 
+  // 加载高德地图API
+  function loadMapAPI() {
+    return new Promise((resolve, reject) => {
+      if (window.AMapLoader) {
+        AMapLoader.load({
+          key: MAP_KEY,
+          version: "2.0",
+          plugins: ["AMap.ToolBar", "AMap.Scale", "AMap.MapType", "AMap.Marker", "AMap.InfoWindow"]
+        })
+        .then((amap) => {
+          AMap = amap;
+          resolve(amap);
+        })
+        .catch((e) => {
+          console.error('高德地图加载失败:', e);
+          reject(e);
+        });
+      } else {
+        reject(new Error('AMapLoader 未加载'));
+      }
+    });
+  }
+
   // 初始化地图
-  function initMap() {
+  async function initMap() {
     const mapContainer = document.getElementById('map-placeholder');
     if (!mapContainer) return;
 
-    // 创建地图实例
-    mapInstance = new AMap.Map('map-placeholder', {
-      zoom: 13,
-      center: [117.0009, 36.6753], // 默认济南市区中心
-      mapStyle: 'amap://styles/normal'
-    });
+    try {
+      // 先加载地图API
+      await loadMapAPI();
+      
+      // 创建地图实例
+      mapInstance = new AMap.Map('map-placeholder', {
+        zoom: 13,
+        center: [117.0009, 36.6753], // 默认济南市区中心
+        mapStyle: 'amap://styles/normal'
+      });
 
-    // 添加地图控件
-    mapInstance.addControl(new AMap.ToolBar());
-    mapInstance.addControl(new AMap.Scale());
-    mapInstance.addControl(new AMap.MapType());
+      // 添加地图控件
+      mapInstance.addControl(new AMap.ToolBar());
+      mapInstance.addControl(new AMap.Scale());
+      mapInstance.addControl(new AMap.MapType());
 
-    // 显示避难所标记
-    showShelters();
+      // 显示避难所标记
+      showShelters();
 
-    // 绑定按钮事件
-    bindEvents();
+      // 绑定按钮事件
+      bindEvents();
+    } catch (e) {
+      console.error('地图初始化失败:', e);
+      mapContainer.innerHTML = '<i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: #ef4444;"></i><p style="color: #ef4444; margin-top: 1rem;">地图加载失败，请检查网络连接</p>';
+    }
   }
 
   // 显示避难所标记
@@ -255,6 +290,7 @@
     openWebNav: openWebNav,
     closeNavOptions: closeNavOptions,
     showShelterList: showShelterList,
-    closeListModal: closeListModal
+    closeListModal: closeListModal,
+    loadMapAPI: loadMapAPI
   };
 })();
