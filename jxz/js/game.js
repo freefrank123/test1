@@ -13,6 +13,7 @@ class GameModule {
     this.foundationBtn = null;
     this.reinforceBtn = null;
     this.difficulty = 'medium'; // easy, medium, hard
+    this.warnedAboutHeight = false; // 记录是否已提醒过楼层过高警告
   }
 
   init() {
@@ -45,17 +46,24 @@ class GameModule {
     this.score = 0;
     this.isShaking = false;
     this.difficulty = 'medium';
+    this.warnedAboutHeight = false; // 重置警告标志
 
     // 清空画布
     if (this.canvas) {
       this.canvas.innerHTML = '';
       this.canvas.style.borderBottom = '3px solid #3498db';
+      this.canvas.style.maxHeight = '400px';
+      this.canvas.style.overflowY = 'auto';
+      this.canvas.style.overflowX = 'hidden';
+      this.canvas.style.scrollBehavior = 'smooth';
+      this.canvas.style.display = 'block';
       
       // 添加提示
       const hint = document.createElement('p');
       hint.innerText = '🏗️ 先打地基，再建高楼！';
       hint.style.opacity = '0.6';
       hint.style.marginBottom = '20px';
+      hint.style.textAlign = 'center';
       this.canvas.appendChild(hint);
     }
 
@@ -207,12 +215,17 @@ class GameModule {
     foundation.style.display = 'flex';
     foundation.style.alignItems = 'center';
     foundation.style.justifyContent = 'center';
+    foundation.style.marginTop = '4px';
+    foundation.style.position = 'relative';
+    foundation.style.left = '50%';
+    foundation.style.marginLeft = `-${(200 + this.foundationLevel * 30) / 2}px`;
 
     // 如果已有地基，替换它
     const existingFoundation = this.canvas.querySelector('.game-foundation');
     if (existingFoundation) {
       this.canvas.replaceChild(foundation, existingFoundation);
     } else {
+      // 添加到画布末尾（底部）
       this.canvas.appendChild(foundation);
     }
 
@@ -230,6 +243,12 @@ class GameModule {
     }
 
     this.floorCount++;
+
+    // 楼层过高警告（只提醒一次）
+    if (this.floorCount === 21 && !this.warnedAboutHeight) {
+      alert('⚠️ 楼层过高会大幅增加地震风险！建议不超过20层');
+      this.warnedAboutHeight = true;
+    }
     this.score += 10;
 
     // 移除提示
@@ -241,24 +260,42 @@ class GameModule {
     floor.className = 'game-floor';
     floor.dataset.floor = this.floorCount;
     const maxWidth = 200 + this.foundationLevel * 30;
-    floor.style.width = `${Math.max(maxWidth - this.floorCount * 10, 80)}px`;
+    const floorWidth = Math.max(maxWidth - this.floorCount * 10, 80);
+    floor.style.width = `${floorWidth}px`;
     floor.style.height = '28px';
     floor.style.background = this.getFloorColor(this.floorCount);
     floor.style.borderRadius = '4px';
-    floor.style.marginBottom = '4px';
+    floor.style.margin = '0 auto 4px';
     floor.style.boxShadow = '0 2px 8px rgba(0,0,0,0.2)';
     floor.style.display = 'flex';
     floor.style.alignItems = 'center';
     floor.style.justifyContent = 'center';
+    floor.style.transition = 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)';
+    floor.style.transform = `scale(0.7) translateY(-20px)`;
+    floor.style.opacity = '0';
+    floor.style.transformOrigin = 'center bottom';
     floor.innerHTML = `<span style="font-size: 10px; color: white; font-weight: bold;">${this.floorCount}F</span>`;
 
-    // 插入到地基之上（如果有地基）
-    const foundation = this.canvas.querySelector('.game-foundation');
-    if (foundation) {
-      this.canvas.insertBefore(floor, foundation);
+    // 插入到最顶部（后建的楼层在上面）
+    const firstFloor = this.canvas.querySelector('.game-floor');
+    if (firstFloor) {
+      // 如果已有楼层，插入到最顶层之前
+      this.canvas.insertBefore(floor, firstFloor);
     } else {
-      this.canvas.insertBefore(floor, this.canvas.firstChild);
+      // 如果没有楼层，插入到地基之前
+      const foundation = this.canvas.querySelector('.game-foundation');
+      if (foundation) {
+        this.canvas.insertBefore(floor, foundation);
+      } else {
+        this.canvas.appendChild(floor);
+      }
     }
+
+    // 触发入场动画
+    requestAnimationFrame(() => {
+      floor.style.transform = 'scale(1) translateY(0)';
+      floor.style.opacity = '1';
+    });
 
     // 更新得分
     this.updateScore();
@@ -273,18 +310,21 @@ class GameModule {
       return;
     }
 
-    // 加固最顶层
-    const topFloor = this.canvas.querySelector('.game-floor:not(.reinforced)');
-    if (!topFloor) {
+    // 从下往上加固（找到最底层未加固的楼层）
+    const floors = this.canvas.querySelectorAll('.game-floor:not(.reinforced)');
+    if (floors.length === 0) {
       alert('所有楼层都已加固！');
       return;
     }
+    
+    // 获取最底层的未加固楼层（最后一个元素）
+    const bottomFloor = floors[floors.length - 1];
 
     this.score -= 15;
-    this.reinforcedFloors.add(parseInt(topFloor.dataset.floor));
-    topFloor.classList.add('reinforced');
-    topFloor.style.background = 'linear-gradient(135deg, #10b981, #059669)';
-    topFloor.innerHTML = `<span style="font-size: 10px; color: white; font-weight: bold;">${topFloor.dataset.floor}F ✨</span>`;
+    this.reinforcedFloors.add(parseInt(bottomFloor.dataset.floor));
+    bottomFloor.classList.add('reinforced');
+    bottomFloor.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+    bottomFloor.innerHTML = `<span style="font-size: 10px; color: white; font-weight: bold;">${bottomFloor.dataset.floor}F ✨</span>`;
 
     this.updateScore();
     // 更新按钮状态
@@ -336,36 +376,163 @@ class GameModule {
 
   evaluateResult() {
     const intensity = this.getDifficultyMultiplier();
-    const totalStrength = (this.foundationLevel * 20) + (this.floorCount * 10) + (this.reinforcedFloors.size * 15);
-    const damageThreshold = this.floorCount * 15 * intensity;
+    
+    // 地基提供基础稳定性，等级越高效果越好
+    const foundationBonus = this.foundationLevel * 35;
+    
+    // 楼层提供少量强度，但也增加风险
+    const floorStrength = this.floorCount * 6;
+    
+    // 加固提供额外保护
+    const reinforceBonus = this.reinforcedFloors.size * 18;
+    
+    // 总强度
+    const totalStrength = foundationBonus + floorStrength + reinforceBonus;
+    
+    // 高度惩罚：楼层越高，风险呈指数增长
+    // 5层以下基本安全，超过5层后风险快速增加
+    const heightPenalty = this.floorCount <= 5 ? 1 : Math.pow(1.15, this.floorCount - 5);
+    
+    // 地基可以降低高度惩罚的影响
+    const foundationProtection = 1 - (this.foundationLevel * 0.1);
+    
+    // 最终损伤阈值（考虑高度风险和地基保护）
+    const baseThreshold = this.floorCount * 12 * intensity;
+    const actualHeightPenalty = Math.max(1, heightPenalty * foundationProtection);
+    const damageThreshold = baseThreshold * actualHeightPenalty;
 
     let result = '';
     let emoji = '';
     let bonusScore = 0;
+    let damageLevel = 'none';
 
     if (totalStrength >= damageThreshold * 1.5) {
       emoji = '🏆';
       result = '房屋稳固，完美抗震！';
       bonusScore = 50;
+      damageLevel = 'none';
     } else if (totalStrength >= damageThreshold) {
       emoji = '👍';
       result = '房屋稳固，抗震合格！';
       bonusScore = 20;
-    } else if (totalStrength >= damageThreshold * 0.7) {
+      damageLevel = 'none';
+    } else if (totalStrength >= damageThreshold * 0.8) {
       emoji = '⚠️';
       result = '房屋轻微受损，需要加固！';
       bonusScore = 0;
+      damageLevel = 'light';
+    } else if (totalStrength >= damageThreshold * 0.5) {
+      emoji = '🛠️';
+      result = '房屋中度受损，部分楼层需要修复！';
+      bonusScore = -15;
+      damageLevel = 'medium';
+    } else if (totalStrength >= damageThreshold * 0.25) {
+      emoji = '🔥';
+      result = '房屋重度损毁，需要大规模修复！';
+      bonusScore = -30;
+      damageLevel = 'heavy';
     } else {
       emoji = '💥';
-      result = '房屋严重损毁！';
-      bonusScore = -30;
+      result = '房屋倒塌！';
+      bonusScore = -50;
+      damageLevel = 'collapsed';
     }
 
     this.score += bonusScore;
     this.updateScore();
 
-    // 显示结果弹窗
-    this.showResultModal(emoji, result, bonusScore);
+    // 应用损伤视觉效果（传入结果数据以便倒塌时延迟显示）
+    this.applyDamageEffect(damageLevel, { emoji, result, bonusScore });
+  }
+
+  applyDamageEffect(damageLevel, resultData = null) {
+    const floors = this.canvas.querySelectorAll('.game-floor');
+    if (floors.length === 0) {
+      if (damageLevel !== 'none' && resultData) {
+        this.showResultModal(resultData.emoji, resultData.result, resultData.bonusScore);
+      }
+      return;
+    }
+
+    const floorArray = Array.from(floors);
+    
+    switch (damageLevel) {
+      case 'light': {
+        // 轻微受损：随机几层变色
+        const numDamaged = Math.ceil(floorArray.length * 0.2);
+        const shuffled = [...floorArray].sort(() => Math.random() - 0.5);
+        shuffled.slice(0, numDamaged).forEach(floor => {
+          floor.style.background = 'linear-gradient(135deg, #f59e0b, #d97706)';
+          floor.style.transform = 'skewX(-2deg)';
+        });
+        if (resultData) {
+          this.showResultModal(resultData.emoji, resultData.result, resultData.bonusScore);
+        }
+        break;
+      }
+      case 'medium': {
+        // 中度受损：一半楼层变色并倾斜
+        const numDamaged = Math.ceil(floorArray.length * 0.5);
+        const shuffled = [...floorArray].sort(() => Math.random() - 0.5);
+        shuffled.slice(0, numDamaged).forEach((floor, index) => {
+          floor.style.background = 'linear-gradient(135deg, #ef4444, #dc2626)';
+          floor.style.transform = `skewX(${index % 2 === 0 ? -3 : 3}deg)`;
+        });
+        if (resultData) {
+          this.showResultModal(resultData.emoji, resultData.result, resultData.bonusScore);
+        }
+        break;
+      }
+      case 'heavy': {
+        // 重度损毁：大部分楼层严重变形
+        floorArray.forEach((floor, index) => {
+          if (index < floorArray.length * 0.7) {
+            floor.style.background = 'linear-gradient(135deg, #991b1b, #7f1d1d)';
+            floor.style.transform = `skewX(${index % 2 === 0 ? -8 : 8}deg) scale(0.95)`;
+            floor.style.opacity = '0.7';
+          }
+        });
+        // 移除顶部几层
+        for (let i = 0; i < Math.ceil(floorArray.length * 0.3); i++) {
+          if (floorArray[i]) {
+            floorArray[i].style.display = 'none';
+            this.floorCount--;
+          }
+        }
+        if (resultData) {
+          this.showResultModal(resultData.emoji, resultData.result, resultData.bonusScore);
+        }
+        break;
+      }
+      case 'collapsed': {
+        // 倒塌：所有楼层倒塌动画
+        floorArray.forEach((floor, index) => {
+          floor.style.transition = `transform 0.6s ease-in-out ${index * 0.08}s, opacity 0.4s ease-out ${index * 0.08}s`;
+          floor.style.transform = `translateY(${100 + index * 50}px) rotate(${index % 2 === 0 ? -45 : 45}deg) scale(0.7)`;
+          floor.style.opacity = '0';
+          floor.style.zIndex = -index;
+        });
+        // 延迟后移除楼层并显示结算弹窗
+        setTimeout(() => {
+          floorArray.forEach(floor => {
+            floor.remove();
+          });
+          this.floorCount = 0;
+          this.reinforcedFloors.clear();
+          
+          // 倒塌动画结束后显示结算弹窗
+          if (resultData) {
+            this.showResultModal(resultData.emoji, resultData.result, resultData.bonusScore);
+          }
+        }, 1000);
+        break;
+      }
+      default: {
+        if (resultData) {
+          this.showResultModal(resultData.emoji, resultData.result, resultData.bonusScore);
+        }
+      }
+    }
   }
 
   showResultModal(emoji, message, bonus) {
@@ -480,15 +647,51 @@ if (!document.getElementById('game-styles')) {
       25% { transform: translateX(calc(var(--shake-intensity, 8px) * -1)) rotate(-1deg); }
       75% { transform: translateX(var(--shake-intensity, 8px)) rotate(1deg); }
     }
+    .game-floor {
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
     .game-floor.reinforced {
       border: 2px solid #fbbf24;
+      box-shadow: 0 0 15px rgba(251, 191, 36, 0.5);
     }
     .game-foundation {
       animation: pulse 2s ease-in-out infinite;
+      transition: all 0.3s ease-out;
     }
     @keyframes pulse {
       0%, 100% { box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
       50% { box-shadow: 0 4px 20px rgba(102, 126, 234, 0.6); }
+    }
+    .game-floor.damaged-light {
+      background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+      transform: skewX(-2deg);
+    }
+    .game-floor.damaged-medium {
+      background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+      animation: sway 0.5s ease-in-out infinite;
+    }
+    .game-floor.damaged-heavy {
+      background: linear-gradient(135deg, #991b1b, #7f1d1d) !important;
+      opacity: 0.7;
+      transform: scale(0.95);
+    }
+    @keyframes sway {
+      0%, 100% { transform: skewX(-3deg); }
+      50% { transform: skewX(3deg); }
+    }
+    #gameCanvas::-webkit-scrollbar {
+      width: 6px;
+    }
+    #gameCanvas::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 3px;
+    }
+    #gameCanvas::-webkit-scrollbar-thumb {
+      background: #c1c1c1;
+      border-radius: 3px;
+    }
+    #gameCanvas::-webkit-scrollbar-thumb:hover {
+      background: #a8a8a8;
     }
   `;
   document.head.appendChild(styleEl);
