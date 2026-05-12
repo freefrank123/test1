@@ -109,7 +109,7 @@ class ChatModule {
 
     // 本地mock数据
     try {
-      const response = await fetch('./mock/chat.json');
+      const response = await fetch('../mock/chat.json');
       const data = await response.json();
       for (const [key, value] of Object.entries(data)) {
         if (userText.includes(key)) {

@@ -35,7 +35,7 @@ class QuizModule {
     } else {
       // 本地mock数据
       try {
-        const response = await fetch('./mock/dt.json');
+        const response = await fetch('../mock/dt.json');
         this.questions = await response.json();
       } catch (err) {
         console.error('加载测验题目失败：', err);
