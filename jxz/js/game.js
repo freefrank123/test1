@@ -1,12 +1,18 @@
-// 济小震 · 游戏模块
+// 济小震 · 游戏模块（优化版）
 class GameModule {
   constructor() {
     this.floorCount = 0;
+    this.foundationLevel = 0;
+    this.reinforcedFloors = new Set();
+    this.score = 0;
     this.isShaking = false;
     this.canvas = null;
     this.scoreElement = null;
     this.buildBtn = null;
     this.earthquakeBtn = null;
+    this.foundationBtn = null;
+    this.reinforceBtn = null;
+    this.difficulty = 'medium'; // easy, medium, hard
   }
 
   init() {
@@ -34,59 +40,197 @@ class GameModule {
 
   startGame() {
     this.floorCount = 0;
+    this.foundationLevel = 0;
+    this.reinforcedFloors = new Set();
+    this.score = 0;
     this.isShaking = false;
+    this.difficulty = 'medium';
 
     // 清空画布
     if (this.canvas) {
       this.canvas.innerHTML = '';
+      this.canvas.style.borderBottom = '3px solid #3498db';
       
       // 添加提示
       const hint = document.createElement('p');
-      hint.innerText = '点击下方按钮搭建房屋楼层';
+      hint.innerText = '🏗️ 先打地基，再建高楼！';
       hint.style.opacity = '0.6';
+      hint.style.marginBottom = '20px';
       this.canvas.appendChild(hint);
     }
 
     // 更新得分显示
-    if (this.scoreElement) {
-      this.scoreElement.innerText = '楼层：0';
-    }
+    this.updateScore();
 
     // 创建并显示控制按钮
     this.createControlButtons();
   }
 
   createControlButtons() {
-    const buttonContainer = document.querySelector('.card div:last-of-type');
+    // 找到按钮区域（包含startGameBtn的div）
+    const startBtn = document.getElementById('startGameBtn');
+    const buttonContainer = startBtn ? startBtn.parentElement : document.querySelector('.card div:nth-of-type(2)');
     if (!buttonContainer) return;
 
-    // 移除已存在的按钮
-    const existingBuildBtn = document.getElementById('game-build-btn');
-    const existingEarthquakeBtn = document.getElementById('game-earthquake-btn');
-    if (existingBuildBtn) existingBuildBtn.remove();
-    if (existingEarthquakeBtn) existingEarthquakeBtn.remove();
+    // 只在首次创建时添加按钮
+    if (document.getElementById('game-foundation-btn')) {
+      // 按钮已存在，更新状态即可
+      this.updateButtonStates();
+      return;
+    }
+
+    // 创建难度选择
+    const difficultyDiv = document.createElement('div');
+    difficultyDiv.id = 'game-difficulty-select';
+    difficultyDiv.style.marginBottom = '1rem';
+    difficultyDiv.innerHTML = `
+      <div style="display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap;">
+        <button onclick="JiXiaoZhen.Game.setDifficulty('easy')" class="btn-secondary" style="padding: 4px 12px; font-size: 12px;">🌊 弱震</button>
+        <button onclick="JiXiaoZhen.Game.setDifficulty('medium')" class="btn-primary" style="padding: 4px 12px; font-size: 12px;">🌪️ 中震</button>
+        <button onclick="JiXiaoZhen.Game.setDifficulty('hard')" class="btn-secondary" style="padding: 4px 12px; font-size: 12px;">🔥 强震</button>
+      </div>
+    `;
+    buttonContainer.appendChild(difficultyDiv);
+
+    // 创建地基按钮
+    this.foundationBtn = document.createElement('button');
+    this.foundationBtn.id = 'game-foundation-btn';
+    this.foundationBtn.className = 'btn-primary';
+    this.foundationBtn.innerHTML = '<i class="fas fa-mountain"></i> 打地基 (+5分)';
+    this.foundationBtn.addEventListener('click', () => this.buildFoundation());
+    buttonContainer.appendChild(this.foundationBtn);
 
     // 创建搭建按钮
     this.buildBtn = document.createElement('button');
     this.buildBtn.id = 'game-build-btn';
-    this.buildBtn.className = 'btn-primary';
-    this.buildBtn.innerHTML = '<i class="fas fa-building"></i> 搭建楼层';
+    this.buildBtn.className = 'btn-secondary';
+    this.buildBtn.innerHTML = '<i class="fas fa-building"></i> 搭建楼层 (+10分)';
     this.buildBtn.addEventListener('click', () => this.buildFloor());
     buttonContainer.appendChild(this.buildBtn);
+
+    // 创建加固按钮
+    this.reinforceBtn = document.createElement('button');
+    this.reinforceBtn.id = 'game-reinforce-btn';
+    this.reinforceBtn.className = 'btn-secondary';
+    this.reinforceBtn.innerHTML = '<i class="fas fa-shield-alt"></i> 加固楼层 (-15分)';
+    this.reinforceBtn.addEventListener('click', () => this.reinforceFloor());
+    buttonContainer.appendChild(this.reinforceBtn);
 
     // 创建地震按钮
     this.earthquakeBtn = document.createElement('button');
     this.earthquakeBtn.id = 'game-earthquake-btn';
-    this.earthquakeBtn.className = 'btn-secondary';
+    this.earthquakeBtn.className = 'btn-primary';
     this.earthquakeBtn.innerHTML = '<i class="fas fa-mountain"></i> 模拟地震';
     this.earthquakeBtn.addEventListener('click', () => this.simulateEarthquake());
     buttonContainer.appendChild(this.earthquakeBtn);
   }
 
+  // 更新按钮状态（禁用/启用）
+  updateButtonStates() {
+    if (this.foundationBtn) {
+      this.foundationBtn.disabled = this.foundationLevel >= 3 || this.isShaking;
+      this.foundationBtn.innerHTML = this.foundationLevel >= 3 
+        ? '<i class="fas fa-mountain"></i> 地基已满' 
+        : '<i class="fas fa-mountain"></i> 打地基 (+5分)';
+    }
+    
+    if (this.buildBtn) {
+      this.buildBtn.disabled = this.foundationLevel === 0 || this.isShaking;
+      this.buildBtn.innerHTML = this.foundationLevel === 0 
+        ? '<i class="fas fa-building"></i> 先打地基' 
+        : '<i class="fas fa-building"></i> 搭建楼层 (+10分)';
+    }
+    
+    if (this.reinforceBtn) {
+      this.reinforceBtn.disabled = this.floorCount === 0 || this.score < 15 || this.isShaking;
+      this.reinforceBtn.innerHTML = this.floorCount === 0 
+        ? '<i class="fas fa-shield-alt"></i> 先建楼层' 
+        : this.score < 15 
+          ? '<i class="fas fa-shield-alt"></i> 积分不足' 
+          : '<i class="fas fa-shield-alt"></i> 加固楼层 (-15分)';
+    }
+    
+    if (this.earthquakeBtn) {
+      this.earthquakeBtn.disabled = this.floorCount === 0 || this.isShaking;
+      this.earthquakeBtn.innerHTML = this.floorCount === 0 
+        ? '<i class="fas fa-mountain"></i> 先建房屋' 
+        : this.isShaking 
+          ? '<i class="fas fa-mountain"></i> 地震中...' 
+          : '<i class="fas fa-mountain"></i> 模拟地震';
+    }
+  }
+
+  setDifficulty(level) {
+    this.difficulty = level;
+    
+    // 更新按钮样式
+    const buttons = document.querySelectorAll('#game-difficulty-select button');
+    buttons.forEach(btn => {
+      btn.className = btn.textContent.includes(this.getDifficultyLabel()) ? 'btn-primary' : 'btn-secondary';
+    });
+  }
+
+  getDifficultyLabel() {
+    const labels = { easy: '弱震', medium: '中震', hard: '强震' };
+    return labels[this.difficulty] || '中震';
+  }
+
+  getDifficultyMultiplier() {
+    const multipliers = { easy: 0.5, medium: 1, hard: 1.5 };
+    return multipliers[this.difficulty] || 1;
+  }
+
+  buildFoundation() {
+    if (this.isShaking || !this.canvas) return;
+    if (this.foundationLevel >= 3) {
+      alert('地基已达到最高等级！');
+      return;
+    }
+
+    this.foundationLevel++;
+    this.score += 5;
+
+    // 移除提示
+    const hint = this.canvas.querySelector('p');
+    if (hint) hint.remove();
+
+    // 创建地基层
+    const foundation = document.createElement('div');
+    foundation.className = 'game-foundation';
+    foundation.style.width = `${200 + this.foundationLevel * 30}px`;
+    foundation.style.height = '30px';
+    foundation.style.background = `linear-gradient(135deg, #667eea ${this.foundationLevel * 30}%, #764ba2 ${100 - this.foundationLevel * 20}%)`;
+    foundation.style.borderRadius = '8px 8px 0 0';
+    foundation.style.marginBottom = '0';
+    foundation.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
+    foundation.innerHTML = `<span style="font-size: 10px; color: white; padding: 5px;">地基 Lv.${this.foundationLevel}</span>`;
+    foundation.style.display = 'flex';
+    foundation.style.alignItems = 'center';
+    foundation.style.justifyContent = 'center';
+
+    // 如果已有地基，替换它
+    const existingFoundation = this.canvas.querySelector('.game-foundation');
+    if (existingFoundation) {
+      this.canvas.replaceChild(foundation, existingFoundation);
+    } else {
+      this.canvas.appendChild(foundation);
+    }
+
+    // 更新得分
+    this.updateScore();
+    // 更新按钮状态
+    this.updateButtonStates();
+  }
+
   buildFloor() {
     if (this.isShaking || !this.canvas) return;
+    if (this.foundationLevel === 0) {
+      alert('请先打好地基再建楼！');
+      return;
+    }
 
     this.floorCount++;
+    this.score += 10;
 
     // 移除提示
     const hint = this.canvas.querySelector('p');
@@ -95,51 +239,209 @@ class GameModule {
     // 创建楼层
     const floor = document.createElement('div');
     floor.className = 'game-floor';
-    floor.style.width = `${Math.max(150 - this.floorCount * 15, 60)}px`;
-    floor.style.height = '25px';
-    floor.style.background = 'linear-gradient(135deg, #3498db, #2980b9)';
+    floor.dataset.floor = this.floorCount;
+    const maxWidth = 200 + this.foundationLevel * 30;
+    floor.style.width = `${Math.max(maxWidth - this.floorCount * 10, 80)}px`;
+    floor.style.height = '28px';
+    floor.style.background = this.getFloorColor(this.floorCount);
     floor.style.borderRadius = '4px';
-    floor.style.marginBottom = '5px';
+    floor.style.marginBottom = '4px';
     floor.style.boxShadow = '0 2px 8px rgba(0,0,0,0.2)';
+    floor.style.display = 'flex';
+    floor.style.alignItems = 'center';
+    floor.style.justifyContent = 'center';
+    floor.innerHTML = `<span style="font-size: 10px; color: white; font-weight: bold;">${this.floorCount}F</span>`;
 
-    this.canvas.insertBefore(floor, this.canvas.firstChild);
+    // 插入到地基之上（如果有地基）
+    const foundation = this.canvas.querySelector('.game-foundation');
+    if (foundation) {
+      this.canvas.insertBefore(floor, foundation);
+    } else {
+      this.canvas.insertBefore(floor, this.canvas.firstChild);
+    }
 
     // 更新得分
-    if (this.scoreElement) {
-      this.scoreElement.innerText = `楼层：${this.floorCount}`;
+    this.updateScore();
+    // 更新按钮状态
+    this.updateButtonStates();
+  }
+
+  reinforceFloor() {
+    if (this.isShaking || !this.canvas || this.floorCount === 0) return;
+    if (this.score < 15) {
+      alert('积分不足！需要15分加固一层');
+      return;
     }
+
+    // 加固最顶层
+    const topFloor = this.canvas.querySelector('.game-floor:not(.reinforced)');
+    if (!topFloor) {
+      alert('所有楼层都已加固！');
+      return;
+    }
+
+    this.score -= 15;
+    this.reinforcedFloors.add(parseInt(topFloor.dataset.floor));
+    topFloor.classList.add('reinforced');
+    topFloor.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+    topFloor.innerHTML = `<span style="font-size: 10px; color: white; font-weight: bold;">${topFloor.dataset.floor}F ✨</span>`;
+
+    this.updateScore();
+    // 更新按钮状态
+    this.updateButtonStates();
+  }
+
+  getFloorColor(floorNum) {
+    const colors = [
+      'linear-gradient(135deg, #3498db, #2980b9)',
+      'linear-gradient(135deg, #9b59b6, #8e44ad)',
+      'linear-gradient(135deg, #34495e, #2c3e50)',
+      'linear-gradient(135deg, #e74c3c, #c0392b)',
+      'linear-gradient(135deg, #f39c12, #d68910)'
+    ];
+    return colors[(floorNum - 1) % colors.length];
   }
 
   simulateEarthquake() {
     if (this.isShaking || !this.canvas) return;
+    if (this.floorCount === 0) {
+      alert('请先建造房屋！');
+      return;
+    }
 
     this.isShaking = true;
+    const intensity = this.getDifficultyMultiplier();
+    
+    // 更新按钮状态（禁用所有按钮）
+    this.updateButtonStates();
+
+    // 应用震动效果
     this.canvas.classList.add('shaking');
+    this.canvas.style.setProperty('--shake-intensity', `${8 * intensity}px`);
+
+    // 根据难度设置震动时间
+    const shakeDuration = 2000 * intensity;
 
     setTimeout(() => {
       this.canvas.classList.remove('shaking');
       this.isShaking = false;
 
       // 判断结果
-      if (this.scoreElement) {
-        if (this.floorCount >= 3) {
-          this.scoreElement.innerText = `楼层：${this.floorCount} · 🏆 房屋稳固，抗震合格！`;
-        } else if (this.floorCount >= 1) {
-          this.scoreElement.innerText = `楼层：${this.floorCount} · ⚠️ 房屋不够稳固，继续搭建！`;
-        } else {
-          this.scoreElement.innerText = '请先搭建房屋！';
-        }
-      }
-    }, 2000);
+      this.evaluateResult();
+      
+      // 地震结束后更新按钮状态
+      this.updateButtonStates();
+    }, shakeDuration);
+  }
+
+  evaluateResult() {
+    const intensity = this.getDifficultyMultiplier();
+    const totalStrength = (this.foundationLevel * 20) + (this.floorCount * 10) + (this.reinforcedFloors.size * 15);
+    const damageThreshold = this.floorCount * 15 * intensity;
+
+    let result = '';
+    let emoji = '';
+    let bonusScore = 0;
+
+    if (totalStrength >= damageThreshold * 1.5) {
+      emoji = '🏆';
+      result = '房屋稳固，完美抗震！';
+      bonusScore = 50;
+    } else if (totalStrength >= damageThreshold) {
+      emoji = '👍';
+      result = '房屋稳固，抗震合格！';
+      bonusScore = 20;
+    } else if (totalStrength >= damageThreshold * 0.7) {
+      emoji = '⚠️';
+      result = '房屋轻微受损，需要加固！';
+      bonusScore = 0;
+    } else {
+      emoji = '💥';
+      result = '房屋严重损毁！';
+      bonusScore = -30;
+    }
+
+    this.score += bonusScore;
+    this.updateScore();
+
+    // 显示结果弹窗
+    this.showResultModal(emoji, result, bonusScore);
+  }
+
+  showResultModal(emoji, message, bonus) {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      border-radius: 16px;
+      padding: 30px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      z-index: 1000;
+      text-align: center;
+      min-width: 280px;
+    `;
+
+    const bonusText = bonus > 0 ? `+${bonus}分` : bonus < 0 ? `${bonus}分` : '';
+
+    modal.innerHTML = `
+      <div style="font-size: 5rem; margin-bottom: 1rem;">${emoji}</div>
+      <h3 style="color: #333; margin-bottom: 1rem;">${message}</h3>
+      <p style="color: #666; font-size: 14px;">地基等级：${this.foundationLevel}级</p>
+      <p style="color: #666; font-size: 14px;">楼层数量：${this.floorCount}层</p>
+      <p style="color: #666; font-size: 14px;">加固楼层：${this.reinforcedFloors.size}层</p>
+      ${bonusText ? `<p style="color: ${bonus > 0 ? '#10b981' : '#ef4444'}; font-weight: bold; margin-top: 1rem;">${bonusText}</p>` : ''}
+      <button onclick="document.body.removeChild(this.parentElement); document.body.removeChild(document.querySelector('.modal-overlay'))" 
+        style="margin-top: 1.5rem; padding: 10px 30px; background: linear-gradient(135deg, #3b6df0, #7c3aed); color: white; border: none; border-radius: 8px; cursor: pointer;">
+        继续游戏
+      </button>
+    `;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 999;
+    `;
+
+    document.body.appendChild(overlay);
+    document.body.appendChild(modal);
+  }
+
+  updateScore() {
+    if (this.scoreElement) {
+      this.scoreElement.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; padding: 0.5rem; background: #f8f9fa; border-radius: 8px;">
+          <span style="color: #333;">🏆 积分：${this.score}</span>
+          <span style="color: #666; font-size: 12px;">难度：${this.getDifficultyLabel()}</span>
+        </div>
+      `;
+    }
   }
 
   pauseGame() {
-    // 暂停游戏逻辑
-    console.log('游戏暂停');
+    if (this.isShaking) {
+      this.canvas.classList.remove('shaking');
+      this.isShaking = false;
+      this.earthquakeBtn.innerHTML = '<i class="fas fa-mountain"></i> 模拟地震';
+      alert('地震已暂停');
+    } else {
+      alert('游戏已暂停，点击"模拟地震"继续');
+    }
   }
 
   resetGame() {
     this.floorCount = 0;
+    this.foundationLevel = 0;
+    this.reinforcedFloors = new Set();
+    this.score = 0;
     this.isShaking = false;
 
     if (this.canvas) {
@@ -148,15 +450,16 @@ class GameModule {
         <p style="font-size:1.05rem;">游戏画布 — Canvas 动画与计分逻辑</p>
         <p style="font-size:.85rem;opacity:.5;">点击开始挑战</p>
       `;
+      this.canvas.style.borderBottom = '3px solid #3498db';
     }
 
-    if (this.scoreElement) {
-      this.scoreElement.innerText = '得分：0';
-    }
+    this.updateScore();
 
     // 移除控制按钮
-    if (this.buildBtn) this.buildBtn.remove();
-    if (this.earthquakeBtn) this.earthquakeBtn.remove();
+    ['game-build-btn', 'game-earthquake-btn', 'game-foundation-btn', 'game-reinforce-btn', 'game-difficulty-select'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.remove();
+    });
   }
 }
 
@@ -170,12 +473,22 @@ if (!document.getElementById('game-styles')) {
   styleEl.id = 'game-styles';
   styleEl.textContent = `
     .shaking {
-      animation: gameShake 0.5s ease-in-out infinite;
+      animation: gameShake 0.1s ease-in-out infinite;
     }
     @keyframes gameShake {
-      0%, 100% { transform: translateX(0); }
-      25% { transform: translateX(-8px); }
-      75% { transform: translateX(8px); }
+      0%, 100% { transform: translateX(0) rotate(0deg); }
+      25% { transform: translateX(calc(var(--shake-intensity, 8px) * -1)) rotate(-1deg); }
+      75% { transform: translateX(var(--shake-intensity, 8px)) rotate(1deg); }
+    }
+    .game-floor.reinforced {
+      border: 2px solid #fbbf24;
+    }
+    .game-foundation {
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+      50% { box-shadow: 0 4px 20px rgba(102, 126, 234, 0.6); }
     }
   `;
   document.head.appendChild(styleEl);

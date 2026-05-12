@@ -34,6 +34,9 @@ class ChatModule {
     this.addMsg(text, 'user');
     this.inputBox.value = '';
 
+    // 检测是否需要联动地图（地震相关问题）
+    const shouldSearchShelter = this.shouldSearchShelter(text);
+
     // 显示加载中
     this.addLoading();
 
@@ -43,6 +46,41 @@ class ChatModule {
     // 移除加载，显示AI回答
     this.removeLoading();
     this.addMsg(aiReply, 'bot');
+
+    // 如果是地震相关问题，自动搜索避难所
+    if (shouldSearchShelter) {
+      this.triggerShelterSearch();
+    }
+  }
+
+  // 判断是否需要搜索避难所
+  shouldSearchShelter(text) {
+    const keywords = ['地震', '避难', '避险', '逃生', '安全', '救援'];
+    return keywords.some(keyword => text.includes(keyword));
+  }
+
+  // 触发避难所搜索
+  triggerShelterSearch() {
+    if (window.JiXiaoZhen && window.JiXiaoZhen.Map) {
+      // 检查是否有定位
+      const hasLocation = window.JiXiaoZhen.Map.currentLocation;
+      
+      if (hasLocation) {
+        // 已有定位，直接搜索
+        if (window.JiXiaoZhen.Map.searchNearbyShelters) {
+          window.JiXiaoZhen.Map.searchNearbyShelters();
+        }
+      } else {
+        // 没有定位，先定位再搜索
+        window.JiXiaoZhen.Map.getUserLocation();
+        // 定位成功后自动搜索
+        setTimeout(() => {
+          if (window.JiXiaoZhen.Map.searchNearbyShelters) {
+            window.JiXiaoZhen.Map.searchNearbyShelters();
+          }
+        }, 6000);
+      }
+    }
   }
 
   addMsg(text, role) {
@@ -103,11 +141,20 @@ class ChatModule {
   }
 
   async getAIAnswer(userText) {
+    // 优先调用远程AI API
     if (window.JiXiaoZhen && window.JiXiaoZhen.API) {
-      return await window.JiXiaoZhen.API.getAIAnswerLocal(userText);
+      try {
+        const result = await window.JiXiaoZhen.API.getAIAnswer(userText);
+        // 如果返回了有效回答（不是错误信息），则返回
+        if (result && !result.includes('错误') && !result.includes('失败')) {
+          return result;
+        }
+      } catch (err) {
+        console.error('远程AI调用失败:', err);
+      }
     }
 
-    // 本地mock数据
+    // 回退到本地mock数据
     try {
       const response = await fetch('../mock/chat.json');
       const data = await response.json();
@@ -118,6 +165,7 @@ class ChatModule {
       }
       return '我是济小震地震应急助手，请问有什么可以帮助你的？';
     } catch (err) {
+      console.error('本地mock数据加载失败:', err);
       return '抱歉，暂时无法回答你的问题';
     }
   }

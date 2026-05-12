@@ -28,7 +28,7 @@
         AMapLoader.load({
           key: MAP_KEY,
           version: "2.0",
-          plugins: ["AMap.ToolBar", "AMap.Scale", "AMap.MapType", "AMap.Marker", "AMap.InfoWindow"]
+          plugins: ["AMap.ToolBar", "AMap.Scale", "AMap.MapType", "AMap.Marker", "AMap.InfoWindow", "AMap.Geolocation", "AMap.PlaceSearch"]
         })
         .then((amap) => {
           AMap = amap;
@@ -55,8 +55,8 @@
       
       // 创建地图实例
       mapInstance = new AMap.Map('map-placeholder', {
-        zoom: 13,
-        center: [117.0009, 36.6753], // 默认济南市区中心
+        zoom: 15,
+        center: [121.4819, 31.2397], // 默认同济大学四平路校区
         mapStyle: 'amap://styles/normal'
       });
 
@@ -132,56 +132,236 @@
     infoWindow.open(mapInstance, [shelter.lng, shelter.lat]);
   }
 
-  // 获取用户位置
+  // 定位器实例
+  let geolocation = null;
+  // 搜索服务实例
+  let placeSearch = null;
+  // 定位尝试次数
+  let locateAttempts = 0;
+  const MAX_ATTEMPTS = 3;
+  // 最佳定位结果
+  let bestLocation = null;
+
+  // 获取用户位置（优化版：连续定位获取最优精度）
   function getUserLocation() {
     const locateBtn = document.getElementById('locateBtn');
     if (locateBtn) locateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 定位中...';
 
-    navigator.geolocation.getCurrentPosition(
-      function(position) {
-        currentUserLocation = {
-          lat: position.coords.latitude,
-          lng: position.coords.longitude
-        };
+    // 重置定位状态
+    locateAttempts = 0;
+    bestLocation = null;
 
-        if (userMarker) mapInstance.remove(userMarker);
+    // 创建定位器（首次调用时初始化）
+    if (!geolocation) {
+      geolocation = new AMap.Geolocation({
+        enableHighAccuracy: true,  // 高精度模式
+        timeout: 8000,             // 延长超时时间以获取更好精度
+        maximumAge: 10000,         // 允许10秒内的缓存结果
+        convert: true,             // 自动将定位结果转换为高德坐标
+        showButton: false,         // 不显示默认定位按钮
+        showMarker: false,         // 不显示默认定位标记
+        showCircle: false,         // 不显示精度圈
+        panToLocation: false,      // 定位后不自动平移
+        zoomToAccuracy: false      // 定位后不自动缩放
+      });
 
-        userMarker = new AMap.Marker({
-          position: [currentUserLocation.lng, currentUserLocation.lat],
-          title: '我的位置',
-          icon: new AMap.Icon({
-            size: new AMap.Size(40, 40),
-            image: 'https://webapi.amap.com/theme/v1.3/markers/b/mark_r.png',
-            imageSize: new AMap.Size(40, 40)
-          }),
-          offset: new AMap.Pixel(-20, -20)
+      // 绑定定位监听
+      geolocation.on('complete', onLocationSuccess);
+      geolocation.on('error', onLocationError);
+    }
+
+    // 开始第一次定位
+    geolocation.getCurrentPosition();
+  }
+
+  // 获取周边避难所（使用高德地图搜索API，支持多关键词搜索）
+  function searchNearbyShelters() {
+    if (!currentUserLocation) {
+      alert('请先定位您的位置');
+      return;
+    }
+
+    const nearbyBtn = document.getElementById('nearbyBtn');
+    if (nearbyBtn) nearbyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 搜索中...';
+
+    // 创建搜索服务（首次调用时初始化）
+    if (!placeSearch) {
+      placeSearch = new AMap.PlaceSearch({
+        pageSize: 20,              // 增加每页数量
+        pageIndex: 1,              // 第一页
+        city: '全国',              // 不限制城市，全国范围搜索
+        extensions: 'all'          // 返回详细信息
+      });
+    }
+
+    // 搜索关键词列表（扩大搜索范围）
+    const keywords = ['应急避难所', '人防工程', '防空洞', '避难场所'];
+    const searchRadius = 10000;    // 扩大搜索范围到10公里
+    let searchIndex = 0;
+    let allResults = [];
+    const seenIds = new Set();
+
+    // 递归搜索所有关键词
+    function searchNext() {
+      if (searchIndex >= keywords.length) {
+        // 所有关键词搜索完成
+        handleSearchResults(allResults);
+        return;
+      }
+
+      const keyword = keywords[searchIndex];
+      console.log(`搜索关键词: ${keyword}，范围: ${searchRadius}米`);
+
+      placeSearch.searchNearBy(keyword, [currentUserLocation.lng, currentUserLocation.lat], searchRadius, function(status, result) {
+        searchIndex++;
+
+        if (status === 'complete' && result.info === 'OK') {
+          if (result.poiList && result.poiList.pois) {
+            result.poiList.pois.forEach(poi => {
+              // 去重：避免重复结果
+              if (!seenIds.has(poi.id)) {
+                seenIds.add(poi.id);
+                allResults.push(poi);
+              }
+            });
+            console.log(`关键词「${keyword}」搜索到 ${result.poiList.pois.length} 个结果`);
+          }
+        } else {
+          console.error(`关键词「${keyword}」搜索失败:`, result);
+        }
+
+        // 继续搜索下一个关键词
+        searchNext();
+      });
+    }
+
+    // 处理搜索结果
+    function handleSearchResults(results) {
+      if (results.length > 0) {
+        // 更新避难所数据
+        SHELTER_DATA.length = 0;
+        results.forEach(poi => {
+          SHELTER_DATA.push({
+            id: poi.id,
+            name: poi.name,
+            lat: poi.location.lat,
+            lng: poi.location.lng,
+            address: poi.address || poi.name,
+            type: poi.type || '未知类型'
+          });
         });
 
-        mapInstance.add(userMarker);
-        mapInstance.setCenter([currentUserLocation.lng, currentUserLocation.lat]);
-        mapInstance.setZoom(15);
+        // 刷新地图上的避难所标记
+        showShelters();
 
-        const infoWindow = new AMap.InfoWindow({
-          content: '<div style="padding: 8px; font-size: 12px;">您的当前位置</div>',
-          offset: new AMap.Pixel(0, -25)
-        });
-        infoWindow.open(mapInstance, [currentUserLocation.lng, currentUserLocation.lat]);
+        // 显示避难所列表
+        showShelterList();
 
-        if (locateBtn) {
-          locateBtn.innerHTML = '<i class="fas fa-check"></i> 定位成功';
-          setTimeout(() => { locateBtn.innerHTML = '<i class="fas fa-crosshairs"></i> 定位我的位置'; }, 2000);
-        }
-      },
-      function(error) {
-        console.error('定位失败:', error);
-        if (locateBtn) {
-          locateBtn.innerHTML = '<i class="fas fa-exclamation-circle"></i> 定位失败';
-          setTimeout(() => { locateBtn.innerHTML = '<i class="fas fa-crosshairs"></i> 定位我的位置'; }, 2000);
-        }
-        alert('无法获取您的位置，请检查定位权限设置');
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    );
+        console.log(`搜索完成，共找到 ${results.length} 个避难场所`);
+      } else {
+        // 未找到结果，使用默认数据
+        alert('未找到附近的避难所，将显示预设的避难所位置');
+        // 使用预设数据显示
+        showShelterList();
+      }
+
+      if (nearbyBtn) {
+        nearbyBtn.innerHTML = '<i class="fas fa-list-ul"></i> 查看避难所列表';
+      }
+    }
+
+    // 开始搜索
+    searchNext();
+  }
+
+  // 定位成功回调（支持连续定位优化）
+  function onLocationSuccess(result) {
+    const locateBtn = document.getElementById('locateBtn');
+    locateAttempts++;
+
+    // 记录当前定位精度
+    const currentAccuracy = result.accuracy || 1000;
+    console.log(`第${locateAttempts}次定位，精度: ${currentAccuracy}米`);
+
+    // 更新最佳位置（选择精度更高的结果）
+    if (!bestLocation || currentAccuracy < (bestLocation.accuracy || 1000)) {
+      bestLocation = {
+        lat: result.position.lat,
+        lng: result.position.lng,
+        accuracy: currentAccuracy
+      };
+    }
+
+    // 更新用户位置
+    currentUserLocation = {
+      lat: bestLocation.lat,
+      lng: bestLocation.lng
+    };
+
+    // 更新用户标记
+    if (userMarker) mapInstance.remove(userMarker);
+
+    userMarker = new AMap.Marker({
+      position: [currentUserLocation.lng, currentUserLocation.lat],
+      title: '我的位置',
+      icon: new AMap.Icon({
+        size: new AMap.Size(40, 40),
+        image: 'https://webapi.amap.com/theme/v1.3/markers/b/mark_r.png',
+        imageSize: new AMap.Size(40, 40)
+      }),
+      offset: new AMap.Pixel(-20, -20)
+    });
+
+    mapInstance.add(userMarker);
+    mapInstance.setCenter([currentUserLocation.lng, currentUserLocation.lat]);
+    mapInstance.setZoom(15);
+
+    // 显示位置信息（包含精度）
+    const accuracy = bestLocation.accuracy ? `精度：${bestLocation.accuracy}米` : '';
+    const infoWindow = new AMap.InfoWindow({
+      content: `<div style="padding: 8px; font-size: 12px;">您的当前位置<br>${accuracy}</div>`,
+      offset: new AMap.Pixel(0, -25)
+    });
+    infoWindow.open(mapInstance, [currentUserLocation.lng, currentUserLocation.lat]);
+
+    // 判断是否继续定位：如果精度不够且未达到最大尝试次数，继续定位
+    if (currentAccuracy > 50 && locateAttempts < MAX_ATTEMPTS) {
+      console.log(`精度${currentAccuracy}米，继续定位...`);
+      setTimeout(() => geolocation.getCurrentPosition(), 1000);
+    } else {
+      // 定位完成
+      if (locateBtn) {
+        locateBtn.innerHTML = '<i class="fas fa-check"></i> 定位成功';
+        setTimeout(() => { locateBtn.innerHTML = '<i class="fas fa-crosshairs"></i> 定位我的位置'; }, 2000);
+      }
+      console.log('定位完成，最佳精度:', bestLocation.accuracy, '米');
+    }
+  }
+
+  // 定位失败回调
+  function onLocationError(error) {
+    const locateBtn = document.getElementById('locateBtn');
+    console.error('定位失败:', error);
+
+    if (locateBtn) {
+      locateBtn.innerHTML = '<i class="fas fa-exclamation-circle"></i> 定位失败';
+      setTimeout(() => { locateBtn.innerHTML = '<i class="fas fa-crosshairs"></i> 定位我的位置'; }, 2000);
+    }
+
+    // 根据错误类型给出具体提示
+    let errorMsg = '无法获取您的位置';
+    switch(error.info) {
+      case 'PERMISSION_DENIED':
+        errorMsg = '请在浏览器设置中允许定位权限';
+        break;
+      case 'POSITION_UNAVAILABLE':
+        errorMsg = '当前位置信息不可用，请检查网络或GPS';
+        break;
+      case 'TIMEOUT':
+        errorMsg = '定位超时，请重试';
+        break;
+    }
+    alert(errorMsg);
   }
 
   // 导航到避难所
@@ -229,24 +409,48 @@
     });
   }
 
-  // 显示避难所列表
+  // 显示避难所列表（按距离排序）
   function showShelterList() {
+    // 如果有用户定位，按距离排序；否则按默认顺序
+    let sortedShelters = [...SHELTER_DATA];
+    
+    if (currentUserLocation) {
+      sortedShelters.sort((a, b) => {
+        const distA = AMap.GeometryUtil.distance(
+          [currentUserLocation.lng, currentUserLocation.lat],
+          [a.lng, a.lat]
+        );
+        const distB = AMap.GeometryUtil.distance(
+          [currentUserLocation.lng, currentUserLocation.lat],
+          [b.lng, b.lat]
+        );
+        return distA - distB;
+      });
+    }
+
     let listHtml = '<h3 style="color: #3b6df0; margin-bottom: 12px;">周边避难所列表</h3>';
     
-    SHELTER_DATA.forEach((shelter, index) => {
+    sortedShelters.forEach((shelter, index) => {
       let distance = '';
+      let nearestBadge = '';
+      
       if (currentUserLocation) {
         const dist = AMap.GeometryUtil.distance(
           [currentUserLocation.lng, currentUserLocation.lat],
           [shelter.lng, shelter.lat]
         );
         distance = ` - ${(dist / 1000).toFixed(2)}公里`;
+        
+        // 标记最近的避难所
+        if (index === 0) {
+          nearestBadge = '<span style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 2px 8px; border-radius: 10px; font-size: 10px; margin-left: 8px;">最近</span>';
+        }
       }
       
       listHtml += `
         <div style="padding: 12px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
           <div>
-            <div style="font-weight: 600; color: #333;">${index + 1}. ${shelter.name}</div>
+            <div style="font-weight: 600; color: #333;">${index + 1}. ${shelter.name}${nearestBadge}</div>
             <div style="font-size: 12px; color: #999; margin-top: 4px;">${shelter.address}${distance}</div>
           </div>
           <button onclick="JiXiaoZhen.Map.navigateTo(${shelter.lat}, ${shelter.lng}, '${shelter.name}')" 
@@ -278,7 +482,7 @@
   // 绑定事件
   function bindEvents() {
     document.getElementById('locateBtn')?.addEventListener('click', getUserLocation);
-    document.getElementById('nearbyBtn')?.addEventListener('click', showShelterList);
+    document.getElementById('nearbyBtn')?.addEventListener('click', searchNearbyShelters);
   }
 
   // 暴露到全局
@@ -291,6 +495,8 @@
     closeNavOptions: closeNavOptions,
     showShelterList: showShelterList,
     closeListModal: closeListModal,
-    loadMapAPI: loadMapAPI
+    loadMapAPI: loadMapAPI,
+    searchNearbyShelters: searchNearbyShelters,
+    get currentLocation() { return currentUserLocation; }
   };
 })();
