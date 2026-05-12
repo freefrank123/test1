@@ -27,7 +27,7 @@ class DataModule {
     } else {
       // 本地mock数据
       try {
-        const response = await fetch('./mock/news.json');
+        const response = await fetch('../mock/news.json');
         news = await response.json();
       } catch (err) {
         console.error('加载新闻数据失败：', err);
@@ -62,7 +62,7 @@ class DataModule {
     } else {
       // 本地mock数据
       try {
-        const response = await fetch('./mock/news.json');
+        const response = await fetch('../mock/news.json');
         data = await response.json();
       } catch (err) {
         console.error('加载地震数据失败：', err);

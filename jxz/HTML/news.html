@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>地震新闻 - 济小震</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="../css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
@@ -128,7 +128,7 @@
 
     <footer>&copy; 2025 济小震 · 科技防灾平台 | 数据来源：中国地震台网 / USGS</footer>
 
-    <script src="js/common.js"></script>
+    <script src="../js/common.js"></script>
     <script>
         // 控制自定义选项的显示与隐藏
         const customMagDiv = document.getElementById('customMagRange');
@@ -198,12 +198,7 @@
             }
 
             console.log('搜索参数：', { magCondition, dateCondition, locationCondition });
-            // 显示搜索结果
-            window.JiXiaoZhen.Data.searchEarthquake({
-                magnitude: document.getElementById('magInput').value,
-                date: document.getElementById('dateInput').value,
-                location: document.getElementById('countrySelect').value
-            });
+            window.JiXiaoZhen.Data.searchEarthquake({ magCondition, dateCondition, locationCondition });
         });
 
         // 重置筛选按钮
@@ -241,9 +236,9 @@
             background:#f8f9fa;
         }
     </style>
-    <script src="js/common.js"></script>
-    <script src="js/api.js"></script>
-    <script src="js/data.js"></script>
-    <script src="js/main.js"></script>
+    <script src="../js/common.js"></script>
+    <script src="../js/api.js"></script>
+    <script src="../js/data.js"></script>
+    <script src="../js/main.js"></script>
 </body>
 </html>

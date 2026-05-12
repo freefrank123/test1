@@ -49,7 +49,7 @@ async function getAIAnswerRemote(userText) {
 // 本地AI回答（使用mock数据）
 async function getAIAnswerLocal(userText) {
   try {
-    const response = await fetch('./mock/chat.json');
+    const response = await fetch('../mock/chat.json');
     const data = await response.json();
     for (const [key, value] of Object.entries(data)) {
       if (userText.includes(key)) {
@@ -91,7 +91,7 @@ async function apiGetQuiz() {
   } catch (err) {
     console.error('获取测验题库错误：', err);
   }
-  const mockResponse = await fetch('./mock/dt.json');
+  const mockResponse = await fetch('../mock/dt.json');
   return await mockResponse.json();
 }
 
@@ -104,7 +104,7 @@ async function apiGetNews() {
   } catch (err) {
     console.error('获取地震新闻错误：', err);
   }
-  const mockResponse = await fetch('./mock/news.json');
+  const mockResponse = await fetch('../mock/news.json');
   return await mockResponse.json();
 }
 
@@ -117,7 +117,7 @@ async function apiGetEarthquakeData() {
   } catch (err) {
     console.error('获取历史地震数据错误：', err);
   }
-  const mockResponse = await fetch('./mock/news.json');
+  const mockResponse = await fetch('../mock/news.json');
   return await mockResponse.json();
 }
 
