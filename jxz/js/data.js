@@ -22,8 +22,16 @@ class DataModule {
 
     let news = [];
 
+    // 优先尝试从中国地震台网获取实时数据
     if (window.JiXiaoZhen && window.JiXiaoZhen.API) {
-      news = await window.JiXiaoZhen.API.apiGetNews();
+      const cencData = await window.JiXiaoZhen.API.getLatestEarthquakes(10);
+      if (cencData && cencData.length > 0) {
+        news = cencData;
+        console.log('✅ 已从中国地震台网获取实时地震数据');
+      } else {
+        // 备用：从本地API获取
+        news = await window.JiXiaoZhen.API.apiGetNews();
+      }
     } else {
       // 本地mock数据
       try {
@@ -57,8 +65,16 @@ class DataModule {
 
     let data = [];
 
+    // 优先尝试从中国地震台网获取实时数据
     if (window.JiXiaoZhen && window.JiXiaoZhen.API) {
-      data = await window.JiXiaoZhen.API.apiGetEarthquakeData();
+      const cencData = await window.JiXiaoZhen.API.getLatestEarthquakes(20);
+      if (cencData && cencData.length > 0) {
+        data = cencData;
+        console.log('✅ 已从中国地震台网获取历史地震数据');
+      } else {
+        // 备用：从本地API获取
+        data = await window.JiXiaoZhen.API.apiGetEarthquakeData();
+      }
     } else {
       // 本地mock数据
       try {
@@ -92,11 +108,31 @@ class DataModule {
     `).join('');
   }
 
-  searchEarthquake(filters) {
+  async searchEarthquake(filters) {
     // 根据筛选条件搜索地震数据
     console.log('搜索参数：', filters);
-    // 这里可以对接后端接口进行筛选
-    // 目前使用mock数据，直接显示所有数据
+    
+    const tableBody = this.tableContainer.querySelector('tbody');
+    if (!tableBody) return;
+    
+    // 优先尝试从中国地震台网获取筛选后的数据
+    if (window.JiXiaoZhen && window.JiXiaoZhen.API) {
+      const cencData = await window.JiXiaoZhen.API.getCencEarthquakeData(filters);
+      if (cencData && cencData.length > 0) {
+        tableBody.innerHTML = cencData.map(item => `
+          <tr>
+            <td>${item.time}</td>
+            <td>${item.location}</td>
+            <td>${item.magnitude}</td>
+            <td>${item.depth || '未知'}</td>
+          </tr>
+        `).join('');
+        console.log('✅ 已从中国地震台网获取筛选后的地震数据');
+        return;
+      }
+    }
+    
+    // 备用：使用本地数据
     this.loadEarthquakeData();
   }
 }
