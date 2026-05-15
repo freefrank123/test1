@@ -128,47 +128,28 @@ async function getCencEarthquakeData(filters = {}) {
   }
 }
 
-// 获取AI回答
+// 获取AI回答（调用本地后端API）
 async function getAIAnswerRemote(userText) {
-  const API_KEY = '7554a6cf-11a3-4c57-bf86-373267397c66';
-  const API_URL = 'https://ark.cn-beijing.volces.com/api/v3/responses';
-  const MODEL = 'doubao-seed-2-0-mini-260215';
-
   try {
-    const response = await fetch(API_URL, {
+    const response = await fetch(`${API_BASE_URL}/chat`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${API_KEY}`
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: MODEL,
-        input: [
-          {
-            role: 'system',
-            content: [{ type: 'input_text', text: '你是【济小震地震应急助手】，只能回答地震避险、自救、求救、应急知识。回答必须：简短、安全、权威、可直接执行，不要多余话。直接给出最终答案，不要包含任何思考过程或中间步骤。' }]
-          },
-          {
-            role: 'user',
-            content: [{ type: 'input_text', text: userText }]
-          }
-        ]
+        question: userText
       })
     });
 
     const data = await response.json();
-    if (response.ok) {
-      if (data.data && data.data[0] && data.data[0].output) {
-        return processOutput(data.data[0].output);
-      } else if (data.output) {
-        return processOutput(data.output);
-      }
-      return 'AI响应格式异常';
+    if (response.ok && data.success) {
+      return data.answer;
     } else {
-      return `API错误：${data.error?.message || '请求失败'}`;
+      console.warn('后端API返回错误:', data.message);
+      return getAIAnswerLocal(userText);
     }
   } catch (err) {
-    console.error('远程AI调用失败，使用本地数据');
+    console.error('调用本地后端失败，使用本地mock数据:', err);
     return getAIAnswerLocal(userText);
   }
 }
