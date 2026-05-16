@@ -194,7 +194,10 @@ function processOutput(output) {
 async function apiGetQuiz() {
   try {
     const response = await fetch(`${API_BASE_URL}/quiz`);
-    if (response.ok) return await response.json();
+    if (response.ok) {
+      const data = await response.json();
+      if (data.success && data.data) return data.data;
+    }
     console.warn('获取测验题库失败，使用本地mock数据');
   } catch (err) {
     console.error('获取测验题库错误：', err);
@@ -203,10 +206,56 @@ async function apiGetQuiz() {
   return await mockResponse.json();
 }
 
-// 获取地震新闻（优先从台网获取）
+// 获取随机测验题目
+async function apiGetRandomQuiz() {
+  try {
+    const response = await fetch(`${API_BASE_URL}/quiz/random`);
+    if (response.ok) {
+      const data = await response.json();
+      if (data.success && data.data) return data.data;
+    }
+    console.warn('获取随机题目失败');
+  } catch (err) {
+    console.error('获取随机题目错误：', err);
+  }
+  return null;
+}
+
+// 检查测验答案
+async function apiCheckQuizAnswer(quizId, userAnswer) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/quiz/check`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ quizId, userAnswer })
+    });
+    if (response.ok) {
+      const data = await response.json();
+      if (data.success) return data;
+    }
+    console.warn('检查答案失败');
+  } catch (err) {
+    console.error('检查答案错误：', err);
+  }
+  return { correct: false, correctAnswer: 0, explanation: '' };
+}
+
+// 获取地震新闻（优先从后端获取）
 async function apiGetNews() {
   try {
-    // 优先从中国地震台网获取实时数据
+    const response = await fetch(`${API_BASE_URL}/earthquake/news`);
+    if (response.ok) {
+      const data = await response.json();
+      if (data.success && data.data) return data.data;
+    }
+    console.warn('从后端获取新闻失败，尝试台网数据');
+  } catch (err) {
+    console.error('获取后端新闻数据失败:', err);
+  }
+  
+  try {
     const cencData = await getLatestEarthquakes(10);
     if (cencData && cencData.length > 0) {
       return cencData;
@@ -215,13 +264,23 @@ async function apiGetNews() {
     console.error('获取台网数据失败:', err);
   }
   
-  // 备用：使用本地mock数据
   const mockResponse = await fetch('../../mock/news.json');
   return await mockResponse.json();
 }
 
-// 获取历史地震数据（优先从台网获取）
+// 获取最新地震数据（优先从后端获取）
 async function apiGetEarthquakeData() {
+  try {
+    const response = await fetch(`${API_BASE_URL}/earthquake/latest`);
+    if (response.ok) {
+      const data = await response.json();
+      if (data.success && data.data) return data.data;
+    }
+    console.warn('从后端获取地震数据失败，尝试台网数据');
+  } catch (err) {
+    console.error('获取后端地震数据失败:', err);
+  }
+  
   try {
     const cencData = await getLatestEarthquakes(20);
     if (cencData && cencData.length > 0) {
@@ -231,9 +290,44 @@ async function apiGetEarthquakeData() {
     console.error('获取台网数据失败:', err);
   }
   
-  // 备用：使用本地mock数据
   const mockResponse = await fetch('../../mock/news.json');
   return await mockResponse.json();
+}
+
+// 搜索地震数据
+async function apiSearchEarthquake(filters) {
+  try {
+    const params = new URLSearchParams();
+    if (filters.min_mag) params.append('min_mag', filters.min_mag);
+    if (filters.max_mag) params.append('max_mag', filters.max_mag);
+    if (filters.start_date) params.append('start_date', filters.start_date);
+    if (filters.end_date) params.append('end_date', filters.end_date);
+    
+    const response = await fetch(`${API_BASE_URL}/earthquake/search?${params.toString()}`);
+    if (response.ok) {
+      const data = await response.json();
+      if (data.success && data.data) return data.data;
+    }
+    console.warn('搜索地震数据失败');
+  } catch (err) {
+    console.error('搜索地震数据错误：', err);
+  }
+  return [];
+}
+
+// 获取应急信息
+async function apiGetEmergencyInfo() {
+  try {
+    const response = await fetch(`${API_BASE_URL}/earthquake/emergency`);
+    if (response.ok) {
+      const data = await response.json();
+      if (data.success && data.data) return data.data;
+    }
+    console.warn('获取应急信息失败');
+  } catch (err) {
+    console.error('获取应急信息错误：', err);
+  }
+  return null;
 }
 
 // 暴露到全局
@@ -242,8 +336,12 @@ window.JiXiaoZhen.API = {
   getAIAnswer: getAIAnswerRemote,
   getAIAnswerLocal: getAIAnswerLocal,
   apiGetQuiz: apiGetQuiz,
+  apiGetRandomQuiz: apiGetRandomQuiz,
+  apiCheckQuizAnswer: apiCheckQuizAnswer,
   apiGetNews: apiGetNews,
   apiGetEarthquakeData: apiGetEarthquakeData,
+  apiSearchEarthquake: apiSearchEarthquake,
+  apiGetEmergencyInfo: apiGetEmergencyInfo,
   getCencEarthquakeData: getCencEarthquakeData,
   getLatestEarthquakes: getLatestEarthquakes
 };
