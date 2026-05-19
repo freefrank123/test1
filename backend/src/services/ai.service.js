@@ -37,6 +37,7 @@ class AIService {
       });
 
       const data = await response.json();
+      console.log('AI API响应:', JSON.stringify(data, null, 2));
       
       if (response.ok) {
         const answer = this.processOutput(data);
@@ -61,6 +62,12 @@ class AIService {
     
     if (data.data && data.data[0] && data.data[0].output) {
       return this.extractText(data.data[0].output);
+    } else if (data.output && Array.isArray(data.output)) {
+      const messageItem = data.output.find(item => item.type === 'message' && item.role === 'assistant');
+      if (messageItem && messageItem.content) {
+        return this.extractText(messageItem.content);
+      }
+      return this.extractText(data.output);
     } else if (data.output) {
       return this.extractText(data.output);
     }

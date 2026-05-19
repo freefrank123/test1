@@ -1,5 +1,5 @@
 require('dotenv').config();
-const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+const https = require('https');
 
 const mockEarthquakeData = [
   { id: 1, time: '2026-04-10 14:30:00', location: '山东济南', magnitude: '3.2', depth: '10km', content: '据中国地震台网测定，2026年4月10日14时30分在山东济南发生3.2级地震，震源深度10公里。目前无人员伤亡报告。' },
@@ -44,62 +44,250 @@ const emergencyInfo = {
 
 class EarthquakeService {
   async getLatestEarthquakes(limit = 10) {
-    try {
-      const response = await fetch('https://api.ceic.ac.cn/earthquake', {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json'
-        }
-      });
+    const apiUrls = [
+      'https://api.wolfx.jp/cenc_eqlist.json',
+      'https://api.wolfx.jp/cenc_eew.json',
+      'https://api.wolfx.jp/sc_eew.json',
+      'https://api.wolfx.jp/fj_eew.json',
+      'https://api.wolfx.jp/cq_eew.json',
+      'https://www.cenc.ac.cn/ceic_api/api/earthquake'
+    ];
 
-      if (response.ok) {
-        const data = await response.json();
-        return this.processCencData(data, limit);
+    for (let i = 0; i < apiUrls.length; i++) {
+      const url = apiUrls[i];
+      try {
+        console.log('API尝试:', url);
+        
+        const urlObj = new URL(url);
+        console.log('主机:', urlObj.hostname);
+        
+        const result = await this.httpGet(urlObj);
+        
+        if (result.success) {
+          console.log('成功获取数据');
+          let processed = null;
+          if (url.includes('wolfx')) {
+            processed = this.processWolfxData(result.data, limit);
+          } else {
+            processed = this.processCencData(result.data, limit);
+          }
+          
+          if (processed && processed.length > 0) {
+            return processed;
+          }
+        }
+      } catch (err) {
+        console.log('错误:', url, err.message);
       }
-    } catch (err) {
-      console.warn('无法连接到地震台网API，使用本地数据:', err);
     }
 
+    console.log('使用本地数据');
     return mockEarthquakeData.slice(0, limit);
   }
 
+  httpGet(urlObj) {
+    return new Promise(function(resolve, reject) {
+      const options = {
+        hostname: urlObj.hostname,
+        path: urlObj.pathname + urlObj.search,
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        },
+        timeout: 15000
+      };
+
+      const req = https.request(options, function(res) {
+        let data = '';
+        res.on('data', function(chunk) {
+          data += chunk;
+        });
+        res.on('end', function() {
+          try {
+            const jsonData = JSON.parse(data);
+            resolve({ success: true, data: jsonData });
+          } catch (err) {
+            reject(new Error('JSON解析失败'));
+          }
+        });
+      });
+
+      req.on('error', function(e) {
+        reject(e);
+      });
+
+      req.on('timeout', function() {
+        req.destroy();
+        reject(new Error('请求超时'));
+      });
+
+      req.setTimeout(15000);
+      req.end();
+    });
+  }
+
   async getEarthquakeNews(limit = 10) {
-    return mockEarthquakeData.slice(0, limit).map(item => ({
-      time: item.time,
-      location: item.location,
-      magnitude: item.magnitude,
-      depth: item.depth,
-      content: item.content
-    }));
+    return mockEarthquakeData.slice(0, limit).map(function(item) {
+      return {
+        time: item.time,
+        location: item.location,
+        magnitude: item.magnitude,
+        depth: item.depth,
+        content: item.content
+      };
+    });
   }
 
   async searchEarthquakes(filters = {}, limit = 20) {
-    let data = [...mockEarthquakeData];
+    let allData = [];
+    
+    try {
+      // 先从API获取最新数据
+      const apiUrls = [
+        'https://api.wolfx.jp/cenc_eqlist.json',
+        'https://api.wolfx.jp/cenc_eew.json',
+        'https://api.wolfx.jp/sc_eew.json',
+        'https://api.wolfx.jp/fj_eew.json',
+        'https://api.wolfx.jp/cq_eew.json'
+      ];
+      
+      for (let i = 0; i < apiUrls.length && allData.length < 100; i++) {
+        try {
+          const url = apiUrls[i];
+          const urlObj = new URL(url);
+          const result = await this.httpGet(urlObj);
+          
+          if (result.success) {
+            let processed = null;
+            if (url.includes('wolfx')) {
+              processed = this.processWolfxData(result.data, 50);
+            } else {
+              processed = this.processCencData(result.data, 50);
+            }
+            
+            if (processed && processed.length > 0) {
+              // 去重
+              const existingIds = new Set(allData.map(item => item.time + item.location + item.magnitude));
+              processed.forEach(item => {
+                const key = item.time + item.location + item.magnitude;
+                if (!existingIds.has(key)) {
+                  allData.push(item);
+                  existingIds.add(key);
+                }
+              });
+            }
+          }
+        } catch (err) {
+          console.log('获取API数据失败:', err.message);
+        }
+      }
+    } catch (err) {
+      console.log('搜索时获取API数据失败:', err.message);
+    }
+    
+    // 添加mock数据作为补充
+    const existingIds = new Set(allData.map(item => item.time + item.location + item.magnitude));
+    mockEarthquakeData.forEach(item => {
+      const key = item.time + item.location + item.magnitude;
+      if (!existingIds.has(key)) {
+        allData.push(item);
+      }
+    });
 
+    // 应用筛选条件
     if (filters.minMagnitude !== undefined) {
-      data = data.filter(item => parseFloat(item.magnitude) >= filters.minMagnitude);
+      allData = allData.filter(function(item) {
+        const mag = parseFloat(item.magnitude);
+        return !isNaN(mag) && mag >= filters.minMagnitude;
+      });
     }
 
     if (filters.maxMagnitude !== undefined) {
-      data = data.filter(item => parseFloat(item.magnitude) <= filters.maxMagnitude);
+      allData = allData.filter(function(item) {
+        const mag = parseFloat(item.magnitude);
+        return !isNaN(mag) && mag <= filters.maxMagnitude;
+      });
     }
 
     if (filters.startDate) {
-      data = data.filter(item => item.time >= filters.startDate);
+      allData = allData.filter(function(item) {
+        return item.time && item.time >= filters.startDate;
+      });
     }
 
     if (filters.endDate) {
-      data = data.filter(item => item.time <= filters.endDate);
+      allData = allData.filter(function(item) {
+        return item.time && item.time <= filters.endDate;
+      });
     }
 
-    return data.slice(0, limit);
+    // 按时间排序（最新在前）
+    allData.sort(function(a, b) {
+      return (b.time || '').localeCompare(a.time || '');
+    });
+
+    return allData.slice(0, limit);
   }
 
   async getEmergencyInfo() {
     return emergencyInfo;
   }
 
-  processCencData(data, limit = 10) {
+  processWolfxData(data, limit) {
+    if (!data) return null;
+    
+    let list = [];
+    
+    // 尝试多种数据格式
+    // 格式1: No1, No2, No3... 格式
+    const noKeys = Object.keys(data).filter(function(key) { return key.startsWith('No'); });
+    if (noKeys.length > 0) {
+      list = noKeys
+        .sort(function(a, b) { return parseInt(a.replace('No', '')) - parseInt(b.replace('No', '')); })
+        .map(function(key) { return data[key]; })
+        .filter(function(item) { return item && (item.time || item.location || item.magnitude); });
+    } 
+    // 格式2: 直接数组格式
+    else if (Array.isArray(data)) {
+      list = data.filter(function(item) { return item && (item.time || item.location || item.magnitude); });
+    }
+    // 格式3: data.result 或 data.list
+    else if (data.data && Array.isArray(data.data)) {
+      list = data.data.filter(function(item) { return item && (item.time || item.location || item.magnitude); });
+    }
+    else if (data.result && Array.isArray(data.result)) {
+      list = data.result.filter(function(item) { return item && (item.time || item.location || item.magnitude); });
+    }
+    else if (data.list && Array.isArray(data.list)) {
+      list = data.list.filter(function(item) { return item && (item.time || item.location || item.magnitude); });
+    }
+    // 格式4: features数组（GeoJSON格式）
+    else if (data.features && Array.isArray(data.features)) {
+      list = data.features.map(function(f) { return f.properties || f; })
+        .filter(function(item) { return item && (item.time || item.location || item.magnitude); });
+    }
+
+    if (list.length === 0) return null;
+
+    return list.slice(0, limit).map(function(item, index) {
+      const mag = item.magnitude || item.M || item.mag || item.magnitude_value || '';
+      const loc = item.location || item.placeName || item.place || item.EPI_CIRCLE || item.Epicenter || '';
+      const tm = item.time || item.O_TIME || item.OTime || item.origin_time || '';
+      const dp = item.depth || item.EPI_DEPTH || item.depth_value || '';
+      
+      return {
+        id: index + 1,
+        time: tm,
+        location: loc,
+        magnitude: mag,
+        depth: dp ? dp + 'km' : '未知',
+        content: '据中国地震台网测定，' + loc + '于' + tm + '发生' + mag + '级地震，震源深度' + (dp || '未知') + '公里。'
+      };
+    });
+  }
+
+  processCencData(data, limit) {
     if (!data || (!data.data && !data.result && !data.list)) {
       return null;
     }
@@ -118,14 +306,17 @@ class EarthquakeService {
 
     if (list.length === 0) return null;
 
-    return list.slice(0, limit).map((item, index) => ({
-      id: index + 1,
-      time: item.O_TIME || item.time || item.OTime || '',
-      location: item.EPI_CIRCLE || item.location || item.place || item.Epicenter || '',
-      magnitude: item.M || item.magnitude || item.Magnitude || '',
-      depth: item.EPI_DEPTH ? `${item.EPI_DEPTH}km` : (item.depth ? `${item.depth}km` : (item.Depth ? `${item.Depth}km` : '未知')),
-      content: item.EPI_INFO || item.info || item.Description || '暂无详细信息'
-    }));
+    return list.slice(0, limit).map(function(item, index) {
+      var depth = item.EPI_DEPTH ? item.EPI_DEPTH + 'km' : (item.depth ? item.depth + 'km' : (item.Depth ? item.Depth + 'km' : '未知'));
+      return {
+        id: index + 1,
+        time: item.O_TIME || item.time || item.OTime || '',
+        location: item.EPI_CIRCLE || item.location || item.place || item.Epicenter || '',
+        magnitude: item.M || item.magnitude || item.Magnitude || '',
+        depth: depth,
+        content: item.EPI_INFO || item.info || item.Description || '暂无详细信息'
+      };
+    });
   }
 }
 
