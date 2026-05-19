@@ -32,9 +32,14 @@
         <div class="card">
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <h2><i class="fas fa-bolt"></i> 实时地震速报</h2>
-                <a href="https://www.cenc.ac.cn/earthquake-manage-publish-web/search" target="_blank" class="btn-secondary" style="font-size: 0.85rem; padding: 0.3rem 0.8rem;">
-                    <i class="fas fa-external-link-alt"></i> 查看官方页面
-                </a>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button class="btn-secondary" style="font-size: 0.85rem; padding: 0.3rem 0.8rem; cursor: pointer;" id="refreshBtn">
+                        <i class="fas fa-sync-alt"></i> 刷新数据
+                    </button>
+                    <a href="https://www.cenc.ac.cn/earthquake-manage-publish-web/search" target="_blank" class="btn-secondary" style="font-size: 0.85rem; padding: 0.3rem 0.8rem;">
+                        <i class="fas fa-external-link-alt"></i> 查看官方页面
+                    </a>
+                </div>
             </div>
             <div id="earthquakeFeed" style="margin-top: 1rem;">
                 <!-- 加载动画 -->
@@ -268,7 +273,8 @@
                 const time = item.O_TIME || item.time || item.OTime || '';
                 const location = item.EPI_CIRCLE || item.location || item.place || item.Epicenter || '';
                 const magnitude = item.M || item.magnitude || item.Magnitude || '';
-                const depth = item.EPI_DEPTH ? `${item.EPI_DEPTH}km` : (item.depth ? `${item.depth}km` : '未知');
+                const depth = item.depth || item.EPI_DEPTH || '未知';
+                const depthWithUnit = depth.toString().includes('km') ? depth : `${depth}km`;
                 
                 // 根据震级设置颜色
                 let magColor = '#27ae60';
@@ -283,7 +289,7 @@
                                 <span style="color: #2c3e50; font-size: 0.95rem;">${location}</span>
                             </div>
                             <div style="color: #95a5a6; font-size: 0.85rem; margin-top: 0.25rem;">
-                                ${time} | 震源深度 ${depth}
+                                ${time} | 震源深度 ${depthWithUnit}
                             </div>
                         </div>
                         <div style="margin-left: 1rem;">
@@ -435,6 +441,22 @@
         // 页面加载时执行
         document.addEventListener('DOMContentLoaded', function() {
             loadEarthquakeData();
+            
+            // 绑定刷新按钮事件
+            const refreshBtn = document.getElementById('refreshBtn');
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', function() {
+                    const container = document.getElementById('earthquakeFeed');
+                    // 显示加载状态
+                    container.innerHTML = `
+                        <div class="loading-container" style="text-align: center; padding: 2rem;">
+                            <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: #3498db;"></i>
+                            <p style="margin-top: 1rem;">正在获取最新地震数据...</p>
+                        </div>
+                    `;
+                    loadEarthquakeData();
+                });
+            }
         });
     </script>
 

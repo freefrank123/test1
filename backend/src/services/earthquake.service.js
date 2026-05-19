@@ -281,7 +281,7 @@ class EarthquakeService {
         time: tm,
         location: loc,
         magnitude: mag,
-        depth: dp ? dp + 'km' : '未知',
+        depth: dp ? (String(dp).includes('km') ? dp : dp + 'km') : '未知',
         content: '据中国地震台网测定，' + loc + '于' + tm + '发生' + mag + '级地震，震源深度' + (dp || '未知') + '公里。'
       };
     });
@@ -307,7 +307,8 @@ class EarthquakeService {
     if (list.length === 0) return null;
 
     return list.slice(0, limit).map(function(item, index) {
-      var depth = item.EPI_DEPTH ? item.EPI_DEPTH + 'km' : (item.depth ? item.depth + 'km' : (item.Depth ? item.Depth + 'km' : '未知'));
+      var depth = item.EPI_DEPTH || item.depth || item.Depth || '';
+      depth = depth ? (String(depth).includes('km') ? depth : depth + 'km') : '未知';
       return {
         id: index + 1,
         time: item.O_TIME || item.time || item.OTime || '',

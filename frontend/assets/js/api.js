@@ -92,7 +92,7 @@ function processCencData(data, limit = 10) {
     time: item.O_TIME || item.time || item.OTime || '',
     location: item.EPI_CIRCLE || item.location || item.place || item.Epicenter || '',
     magnitude: item.M || item.magnitude || item.Magnitude || '',
-    depth: item.EPI_DEPTH ? `${item.EPI_DEPTH}km` : (item.depth ? `${item.depth}km` : (item.Depth ? `${item.Depth}km` : '未知')),
+    depth: (() => { const d = item.depth || item.EPI_DEPTH || item.Depth || ''; return d ? (d.toString().includes('km') ? d : `${d}km`) : '未知'; })(),
     content: item.EPI_INFO || item.info || item.Description || '暂无详细信息'
   }));
 }
