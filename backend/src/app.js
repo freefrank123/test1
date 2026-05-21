@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const db = require('./models');
 
 const chatRoutes = require('./routes/chat.routes');
 const quizRoutes = require('./routes/quiz.routes');
@@ -36,7 +37,22 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-app.listen(port, () => {
-  console.log(`🚀 济小震后端服务已启动，运行在 http://localhost:${port}`);
-  console.log(`📡 已注册服务: /api/chat, /api/quiz, /api/earthquake`);
-});
+async function startServer() {
+  // 尝试连接 MySQL（如果未配置则跳过，不影响 Supabase 功能）
+  try {
+    await db.sequelize.authenticate();
+    console.log('✅ MySQL 数据库连接成功');
+    await db.sequelize.sync({ force: false });
+    console.log('✅ MySQL 数据库表同步完成');
+  } catch (error) {
+    console.warn('⚠️  MySQL 未连接，本地数据库功能不可用:', error.message);
+    console.warn('⚠️  Supabase 用户认证和数据服务不受影响');
+  }
+
+  app.listen(port, () => {
+    console.log(`🚀 济小震后端服务已启动，运行在 http://localhost:${port}`);
+    console.log(`📡 已注册服务: /api/chat, /api/quiz, /api/earthquake`);
+  });
+}
+
+startServer();
