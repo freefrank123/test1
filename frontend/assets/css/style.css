@@ -692,6 +692,517 @@ footer {
   gap: .6rem;
 }
 
+/* ---------- 导航栏用户区域 ---------- */
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+}
+
+.user-area {
+  display: flex;
+  align-items: center;
+}
+
+.btn-login {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .45rem 1rem;
+  background: var(--gradient-accent);
+  color: #fff;
+  border-radius: 20px;
+  text-decoration: none;
+  font-size: .85rem;
+  font-weight: 600;
+  letter-spacing: .3px;
+  transition: all .3s var(--transition-smooth);
+  box-shadow: 0 2px 8px var(--accent-glow);
+}
+.btn-login:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px var(--accent-glow);
+}
+
+.user-menu {
+  position: relative;
+}
+
+.user-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  cursor: pointer;
+  overflow: hidden;
+  border: 2px solid var(--accent-tertiary);
+  transition: all .3s var(--transition-smooth);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gradient-accent);
+}
+.user-avatar:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 12px var(--accent-glow);
+  transform: scale(1.05);
+}
+.user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-placeholder {
+  color: #fff;
+  font-weight: 700;
+  font-size: 1rem;
+  user-select: none;
+}
+
+.user-dropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 180px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  z-index: 200;
+  animation: fadeInUp .2s ease;
+}
+.user-dropdown.show {
+  display: block;
+}
+
+.dropdown-header {
+  padding: .8rem 1rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.dropdown-name {
+  display: block;
+  font-weight: 600;
+  font-size: .9rem;
+  color: var(--text-primary);
+}
+.dropdown-email {
+  display: block;
+  font-size: .78rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.user-dropdown a {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  padding: .7rem 1rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: .88rem;
+  transition: all .2s ease;
+}
+.user-dropdown a:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+.user-dropdown a i {
+  width: 18px;
+  text-align: center;
+  opacity: .7;
+}
+
+/* ---------- 登录/注册页 ---------- */
+.auth-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: calc(100vh - 70px);
+  padding: 2rem 1rem;
+}
+
+.auth-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  padding: 2.5rem 2rem;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: var(--shadow-lg);
+  animation: fadeInUp .5s var(--transition-smooth);
+}
+
+.auth-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+.auth-logo {
+  font-size: 2.5rem;
+  background: var(--gradient-accent);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  display: block;
+  margin-bottom: .5rem;
+}
+.auth-header h2 {
+  font-size: 1.5rem;
+  color: var(--text-primary);
+  margin-bottom: .3rem;
+}
+.auth-header p {
+  color: var(--text-muted);
+  font-size: .9rem;
+}
+
+.auth-tabs {
+  display: flex;
+  gap: .5rem;
+  margin-bottom: 1.8rem;
+  background: var(--bg-tertiary);
+  border-radius: 10px;
+  padding: 4px;
+}
+.auth-tab {
+  flex: 1;
+  padding: .55rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: .9rem;
+  font-weight: 600;
+  background: transparent;
+  color: var(--text-muted);
+  transition: all .25s ease;
+}
+.auth-tab.active {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.auth-form .form-group {
+  margin-bottom: 1.2rem;
+}
+.auth-form label {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  font-size: .88rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: .4rem;
+}
+.auth-form label i {
+  opacity: .7;
+  width: 16px;
+}
+.auth-form input[type="email"],
+.auth-form input[type="password"],
+.auth-form input[type="text"] {
+  width: 100%;
+  padding: .75rem 1rem;
+  border: 2px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-size: .95rem;
+  outline: none;
+  transition: all .25s ease;
+}
+.auth-form input:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 4px var(--accent-glow);
+}
+
+.password-wrapper {
+  position: relative;
+}
+.password-wrapper input {
+  padding-right: 2.8rem;
+}
+.toggle-password {
+  position: absolute;
+  right: .5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1rem;
+  padding: .4rem;
+  transition: color .2s ease;
+}
+.toggle-password:hover {
+  color: var(--text-primary);
+}
+
+.auth-error {
+  background: rgba(220, 38, 38, .1);
+  color: #dc2626;
+  padding: .7rem 1rem;
+  border-radius: 8px;
+  font-size: .85rem;
+  margin-bottom: 1rem;
+  border: 1px solid rgba(220, 38, 38, .2);
+}
+
+.auth-success {
+  background: rgba(34, 197, 94, .1);
+  color: #22c55e;
+  padding: .7rem 1rem;
+  border-radius: 8px;
+  font-size: .85rem;
+  margin-bottom: 1rem;
+  border: 1px solid rgba(34, 197, 94, .2);
+}
+
+.btn-auth {
+  width: 100%;
+  padding: .85rem;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 700;
+  background: var(--gradient-accent);
+  color: #fff;
+  box-shadow: 0 4px 14px var(--accent-glow);
+  transition: all .25s var(--transition-smooth);
+  letter-spacing: .3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+}
+.btn-auth:hover {
+  box-shadow: 0 6px 22px var(--accent-glow);
+  transform: translateY(-2px);
+}
+.btn-auth:disabled {
+  opacity: .7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.auth-switch {
+  text-align: center;
+  margin-top: 1.2rem;
+  font-size: .88rem;
+  color: var(--text-muted);
+}
+.auth-switch a {
+  color: var(--accent-primary);
+  text-decoration: none;
+  font-weight: 600;
+}
+.auth-switch a:hover {
+  text-decoration: underline;
+}
+
+.auth-back {
+  display: block;
+  text-align: center;
+  margin-top: 1rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: .85rem;
+  transition: color .2s ease;
+}
+.auth-back:hover {
+  color: var(--text-primary);
+}
+
+/* ---------- 个人主页 ---------- */
+.profile-header {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 2rem;
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--card-radius);
+  margin-bottom: 1.8rem;
+  box-shadow: var(--shadow-md);
+}
+
+.profile-avatar {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid var(--accent-tertiary);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gradient-accent);
+}
+.profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-placeholder-lg {
+  color: #fff;
+  font-weight: 800;
+  font-size: 2.5rem;
+  user-select: none;
+}
+
+.profile-info {
+  flex: 1;
+}
+.profile-info h1 {
+  font-size: 1.6rem;
+  color: var(--text-primary);
+  margin-bottom: .3rem;
+}
+.profile-info p {
+  color: var(--text-secondary);
+  font-size: .9rem;
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+}
+.profile-joined {
+  color: var(--text-muted);
+  font-size: .82rem;
+  margin-top: 2px;
+}
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 1.5rem;
+}
+
+/* 积分条目 */
+.score-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: .7rem 1rem;
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background .2s ease;
+}
+.score-item:last-child {
+  border-bottom: none;
+}
+.score-item:hover {
+  background: var(--bg-tertiary);
+}
+.score-info {
+  display: flex;
+  align-items: center;
+  gap: .8rem;
+}
+.score-value {
+  font-weight: 700;
+  color: var(--accent-primary);
+  font-size: 1rem;
+}
+.score-percent {
+  background: var(--gradient-accent);
+  color: #fff;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: .78rem;
+  font-weight: 600;
+}
+.score-date {
+  color: var(--text-muted);
+  font-size: .8rem;
+}
+
+/* 历史条目 */
+.history-item {
+  display: flex;
+  align-items: center;
+  gap: .8rem;
+  padding: .7rem 1rem;
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background .2s ease;
+}
+.history-item:last-child {
+  border-bottom: none;
+}
+.history-item:hover {
+  background: var(--bg-tertiary);
+}
+.history-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--bg-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent-primary);
+  flex-shrink: 0;
+}
+.history-info {
+  flex: 1;
+}
+.history-title {
+  display: block;
+  font-weight: 600;
+  font-size: .88rem;
+  color: var(--text-primary);
+}
+.history-type {
+  display: block;
+  font-size: .78rem;
+  color: var(--text-muted);
+}
+.history-time {
+  color: var(--text-muted);
+  font-size: .78rem;
+  white-space: nowrap;
+}
+
+/* 对话历史条目 */
+.chat-history-item {
+  padding: .8rem 1rem;
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background .2s ease;
+}
+.chat-history-item:last-child {
+  border-bottom: none;
+}
+.chat-history-item:hover {
+  background: var(--bg-tertiary);
+}
+.chat-history-msg {
+  display: flex;
+  align-items: flex-start;
+  gap: .5rem;
+  margin-bottom: .4rem;
+  font-size: .85rem;
+}
+.chat-history-msg.user i {
+  color: var(--accent-primary);
+  margin-top: 2px;
+}
+.chat-history-msg.bot i {
+  color: var(--active-link);
+  margin-top: 2px;
+}
+.chat-history-msg.user span {
+  color: var(--text-primary);
+}
+.chat-history-msg.bot span {
+  color: var(--text-secondary);
+}
+
 /* ---------- 响应式 ---------- */
 @media (max-width: 768px) {
   .navbar {

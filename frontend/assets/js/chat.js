@@ -47,6 +47,11 @@ class ChatModule {
     this.removeLoading();
     this.addMsg(aiReply, 'bot');
 
+    // 保存对话历史（登录用户）
+    if (window.JiXiaoZhen?.User) {
+      window.JiXiaoZhen.User.saveChatHistory(text, aiReply);
+    }
+
     // 如果是地震相关问题，自动搜索避难所
     if (shouldSearchShelter) {
       this.triggerShelterSearch();

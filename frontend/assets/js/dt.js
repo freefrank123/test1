@@ -58,6 +58,10 @@ class QuizModule {
       this.optionsElement.innerHTML = '';
       if (this.resultElement) this.resultElement.innerHTML = '';
       this.optionsElement.innerHTML = `<button onclick="window.JiXiaoZhen.Quiz.startQuiz()" class="btn-primary">重新测验</button>`;
+      // 保存测试积分（登录用户）
+      if (window.JiXiaoZhen?.User) {
+        window.JiXiaoZhen.User.saveTestScore(this.score, this.questions.length);
+      }
       return;
     }
 

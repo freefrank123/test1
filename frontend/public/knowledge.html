@@ -17,9 +17,12 @@
             <li><a href="emergency.html">应急求助</a></li>
             <li><a href="game.html">地震小游戏</a></li>
         </ul>
-        <button class="theme-toggle" id="themeToggle">
-            <i class="fas fa-moon"></i>
-        </button>
+        <div class="nav-actions">
+            <div class="user-area" id="userArea"></div>
+            <button class="theme-toggle" id="themeToggle">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
     </nav>
 
     <div class="container">
@@ -69,8 +72,12 @@
 
     <footer>&copy; 2025 济小震 · 科技防灾平台 | 知识守护生命</footer>
 
+    <script src="/frontend/assets/js/supabase.min.js"></script>
+    <script src="/frontend/assets/js/config.js"></script>
+    <script src="/frontend/assets/js/auth.js"></script>
     <script src="/frontend/assets/js/common.js"></script>
     <script src="/frontend/assets/js/api.js"></script>
+    <script src="/frontend/assets/js/user.js"></script>
     <script src="/frontend/assets/js/dt.js"></script>
     <script src="/frontend/assets/js/main.js"></script>
 </body>

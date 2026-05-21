@@ -1,11 +1,11 @@
 // ==================== 全局命名空间（必须在DOMContentLoaded之前定义） ====================
-window.JiXiaoZhen = {
-  apiBaseUrl: 'http://localhost:5000/api',
-  initQuiz: null,
-  initChat: null,
-  initGame: null,
-  loadNews: null
-};
+// 不要覆盖已有的 JiXiaoZhen 属性（如 Auth、Supabase）
+window.JiXiaoZhen = window.JiXiaoZhen || {};
+window.JiXiaoZhen.apiBaseUrl = 'http://localhost:5000/api';
+window.JiXiaoZhen.initQuiz = null;
+window.JiXiaoZhen.initChat = null;
+window.JiXiaoZhen.initGame = null;
+window.JiXiaoZhen.loadNews = null;
 
 // 济小震 · 科技防灾平台 — 通用交互逻辑
 document.addEventListener('DOMContentLoaded', function () {

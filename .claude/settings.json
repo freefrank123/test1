@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s -X POST \"https://bpsdnnwxsgmkzmlfqmya.supabase.co/auth/v1/signup\" -H \"apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJwc2Rubnd4c2dta3ptbGZxbXlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzMzkzMDcsImV4cCI6MjA5NDkxNTMwN30.eJYbF2tEsO3wJUj9O-klj58UweiSiS74masenUdtYGM\" -H \"Content-Type: application/json\" -d '{\"email\":\"jxz-test-user@supabase.io\",\"password\":\"test123456\"}')"
+    ]
+  }
+}

@@ -17,9 +17,12 @@
             <li><a href="emergency.html">应急求助</a></li>
             <li><a href="game.html">地震小游戏</a></li>
         </ul>
-        <button class="theme-toggle" id="themeToggle">
-            <i class="fas fa-moon"></i>
-        </button>
+        <div class="nav-actions">
+            <div class="user-area" id="userArea"></div>
+            <button class="theme-toggle" id="themeToggle">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
     </nav>
 
     <div class="container">
@@ -369,6 +372,15 @@
                     const data = await response.json();
                     if (data.success && data.data && data.data.length > 0) {
                         displaySearchResults(data.data);
+                        // 保存搜索历史（登录用户）
+                        if (window.JiXiaoZhen?.User) {
+                            const query = {};
+                            if (minMag) query.min_mag = minMag;
+                            if (maxMag) query.max_mag = maxMag;
+                            if (startDate) query.start_date = startDate;
+                            if (endDate) query.end_date = endDate;
+                            window.JiXiaoZhen.User.saveSearchHistory(query, data.data.length);
+                        }
                     } else {
                         document.getElementById('searchEmpty').style.display = 'block';
                     }
@@ -491,7 +503,11 @@
         }
     </style>
 
+    <script src="/frontend/assets/js/supabase.min.js"></script>
+    <script src="/frontend/assets/js/config.js"></script>
+    <script src="/frontend/assets/js/auth.js"></script>
     <script src="/frontend/assets/js/api.js"></script>
+    <script src="/frontend/assets/js/user.js"></script>
     <script src="/frontend/assets/js/common.js"></script>
 </body>
 </html>

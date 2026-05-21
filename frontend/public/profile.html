@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人主页 - 济小震</title>
+    <link rel="stylesheet" href="/frontend/assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="/frontend/assets/js/supabase.min.js"></script>
+    <script src="/frontend/assets/js/config.js"></script>
+    <script src="/frontend/assets/js/auth.js"></script>
+    <script src="/frontend/assets/js/api.js"></script>
+    <script src="/frontend/assets/js/user.js"></script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo"><i class="fas fa-shield-halved"></i> 济小震 · 智防未来</div>
+        <ul class="nav-links">
+            <li><a href="index.html">首页</a></li>
+            <li><a href="knowledge.html">地震常识</a></li>
+            <li><a href="news.html">地震新闻</a></li>
+            <li><a href="emergency.html">应急求助</a></li>
+            <li><a href="game.html">地震小游戏</a></li>
+        </ul>
+        <div class="nav-actions">
+            <div class="user-area" id="userArea"></div>
+            <button class="theme-toggle" id="themeToggle">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- 用户信息卡片 -->
+        <div class="profile-header" id="profileHeader">
+            <div class="skeleton" style="width:100px;height:100px;border-radius:50%;"></div>
+            <div style="flex:1;">
+                <div class="skeleton" style="width:120px;height:24px;margin-bottom:8px;"></div>
+                <div class="skeleton" style="width:200px;height:16px;"></div>
+            </div>
+        </div>
+
+        <div class="profile-grid">
+            <!-- 测试积分 -->
+            <div class="card">
+                <h2><i class="fas fa-trophy"></i> 测试积分</h2>
+                <div id="scoresList">
+                    <div class="skeleton" style="width:100%;height:48px;margin-bottom:8px;"></div>
+                    <div class="skeleton" style="width:100%;height:48px;"></div>
+                </div>
+                <div id="scoresEmpty" style="display:none;text-align:center;padding:2rem;color:var(--text-muted);">
+                    <i class="fas fa-inbox" style="font-size:2rem;display:block;margin-bottom:.5rem;"></i>
+                    暂无测试记录
+                </div>
+            </div>
+
+            <!-- 地震搜索历史 -->
+            <div class="card">
+                <h2><i class="fas fa-search"></i> 搜索历史</h2>
+                <div id="searchHistoryList">
+                    <div class="skeleton" style="width:100%;height:48px;margin-bottom:8px;"></div>
+                    <div class="skeleton" style="width:100%;height:48px;"></div>
+                </div>
+                <div id="searchHistoryEmpty" style="display:none;text-align:center;padding:2rem;color:var(--text-muted);">
+                    <i class="fas fa-inbox" style="font-size:2rem;display:block;margin-bottom:.5rem;"></i>
+                    暂无搜索记录
+                </div>
+            </div>
+        </div>
+
+        <!-- AI 对话历史 -->
+        <div class="card" style="margin-top:1.5rem;">
+            <h2><i class="fas fa-comments"></i> 对话历史</h2>
+            <div id="chatHistoryList">
+                <div class="skeleton" style="width:100%;height:60px;margin-bottom:8px;"></div>
+                <div class="skeleton" style="width:100%;height:60px;margin-bottom:8px;"></div>
+                <div class="skeleton" style="width:100%;height:60px;"></div>
+            </div>
+            <div id="chatHistoryEmpty" style="display:none;text-align:center;padding:2rem;color:var(--text-muted);">
+                <i class="fas fa-inbox" style="font-size:2rem;display:block;margin-bottom:.5rem;"></i>
+                暂无对话记录
+            </div>
+        </div>
+
+        <div style="text-align:center;margin-top:1.5rem;">
+            <button class="btn-secondary" id="logoutProfileBtn">
+                <i class="fas fa-sign-out-alt"></i> 退出登录
+            </button>
+            <button class="btn-danger" id="deleteAccountBtn" style="margin-left:1rem;">
+                <i class="fas fa-trash"></i> 注销账户
+            </button>
+        </div>
+    </div>
+
+    <script src="/frontend/assets/js/common.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', async function () {
+        const auth = window.JiXiaoZhen?.Auth;
+        if (!auth?.enabled) { window.location.href = 'index.html'; return; }
+
+        const session = await auth.getSession();
+        if (!session) { window.location.href = 'login.html'; return; }
+
+        const user = session.user;
+        const User = window.JiXiaoZhen?.User;
+        if (!User) return;
+
+        renderProfileHeader(user);
+
+        const [scores, searchHistory, chatHistory] = await Promise.all([
+            User.getTestScores(),
+            User.getSearchHistory(),
+            User.getChatHistory()
+        ]);
+
+        renderScores(scores);
+        renderSearchHistory(searchHistory);
+        renderChatHistory(chatHistory);
+
+        document.getElementById('logoutProfileBtn').addEventListener('click', async function () {
+            await auth.signOut();
+            window.location.href = 'index.html';
+        });
+
+        // 注销账户
+        const deleteBtn = document.getElementById('deleteAccountBtn');
+        deleteBtn.addEventListener('click', async function () {
+            const confirmed = confirm('确定要注销账户吗？\n\n此操作不可撤销，您的所有数据（搜索记录、对话历史、测试积分）将被永久删除。');
+            if (!confirmed) return;
+
+            const secondConfirm = confirm('再次确认：真的要注销账户吗？');
+            if (!secondConfirm) return;
+
+            try {
+                deleteBtn.disabled = true;
+                deleteBtn.innerHTML = '<i class="fas fa-spinner fa-pulse"></i> 注销中...';
+                await User.deleteAccount();
+            } catch (err) {
+                alert('注销失败：' + (err.message || '未知错误'));
+                deleteBtn.disabled = false;
+                deleteBtn.innerHTML = '<i class="fas fa-trash"></i> 注销账户';
+            }
+        });
+    });
+
+    function renderProfileHeader(user) {
+        const metadata = user.user_metadata || {};
+        const avatarUrl = metadata.avatar_url || null;
+        const nickname = metadata.nickname || (user.email ? user.email.split('@')[0] : '用户');
+        const email = user.email || '';
+        const initial = nickname.charAt(0).toUpperCase();
+        const createdAt = user.created_at ? new Date(user.created_at).toLocaleDateString('zh-CN') : '';
+
+        document.getElementById('profileHeader').innerHTML = `
+            <div class="profile-avatar">
+                ${avatarUrl
+                    ? `<img src="${escHtml(avatarUrl)}" alt="avatar">`
+                    : `<span class="avatar-placeholder-lg">${escHtml(initial)}</span>`
+                }
+            </div>
+            <div class="profile-info">
+                <h1>${escHtml(nickname)}</h1>
+                <p><i class="fas fa-envelope"></i> ${escHtml(email)}</p>
+                ${createdAt ? `<p class="profile-joined"><i class="fas fa-calendar"></i> ${createdAt} 加入</p>` : ''}
+            </div>
+            <button class="btn-secondary" id="editProfileBtn">
+                <i class="fas fa-pen"></i> 编辑资料
+            </button>
+        `;
+
+        document.getElementById('editProfileBtn').addEventListener('click', async function () {
+            const nickname = prompt('输入新的昵称：');
+            if (!nickname || !nickname.trim()) return;
+            const result = await window.JiXiaoZhen.User.updateProfile({ nickname: nickname.trim() });
+            if (result) {
+                await window.JiXiaoZhen.Auth.supabase.auth.updateUser({
+                    data: { nickname: nickname.trim() }
+                });
+                location.reload();
+            }
+        });
+    }
+
+    function renderScores(scores) {
+        const list = document.getElementById('scoresList');
+        const empty = document.getElementById('scoresEmpty');
+        if (!scores || scores.length === 0) {
+            list.style.display = 'none';
+            empty.style.display = 'block';
+            return;
+        }
+        list.innerHTML = scores.map(s => `
+            <div class="score-item">
+                <div class="score-info">
+                    <span class="score-value">${s.score} / ${s.total_questions}</span>
+                    <span class="score-percent">${Math.round(s.score / s.total_questions * 100)}%</span>
+                </div>
+                <span class="score-date">${new Date(s.completed_at).toLocaleString('zh-CN')}</span>
+            </div>
+        `).join('');
+    }
+
+    function renderSearchHistory(history) {
+        const list = document.getElementById('searchHistoryList');
+        const empty = document.getElementById('searchHistoryEmpty');
+        if (!history || history.length === 0) {
+            list.style.display = 'none';
+            empty.style.display = 'block';
+            return;
+        }
+        list.innerHTML = history.map(h => {
+            const q = h.query || {};
+            const parts = [];
+            if (q.min_mag && q.max_mag) parts.push(`震级 ${q.min_mag}-${q.max_mag}`);
+            if (q.start_date) parts.push(`日期 ${q.start_date} ~ ${q.end_date || '至今'}`);
+            if (q.location) parts.push(q.location);
+            const desc = parts.length > 0 ? parts.join(' | ') : '默认筛选';
+            return `
+                <div class="history-item">
+                    <div class="history-icon"><i class="fas fa-search"></i></div>
+                    <div class="history-info">
+                        <span class="history-title">${escHtml(desc)}</span>
+                        <span class="history-type">${h.result_count || 0} 条结果</span>
+                    </div>
+                    <span class="history-time">${timeAgo(h.searched_at)}</span>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function renderChatHistory(history) {
+        const list = document.getElementById('chatHistoryList');
+        const empty = document.getElementById('chatHistoryEmpty');
+        if (!history || history.length === 0) {
+            list.style.display = 'none';
+            empty.style.display = 'block';
+            return;
+        }
+        list.innerHTML = history.map(h => `
+            <div class="chat-history-item">
+                <div class="chat-history-msg user">
+                    <i class="fas fa-user"></i>
+                    <span>${escHtml(h.user_message.length > 60 ? h.user_message.slice(0, 60) + '...' : h.user_message)}</span>
+                </div>
+                <div class="chat-history-msg bot">
+                    <i class="fas fa-robot"></i>
+                    <span>${escHtml(h.ai_reply.length > 80 ? h.ai_reply.slice(0, 80) + '...' : h.ai_reply)}</span>
+                </div>
+                <span class="history-time" style="text-align:right;display:block;">${timeAgo(h.created_at)}</span>
+            </div>
+        `).join('');
+    }
+
+    function escHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    function timeAgo(dateStr) {
+        const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+        if (diff < 60) return '刚刚';
+        if (diff < 3600) return `${Math.floor(diff / 60)} 分钟前`;
+        if (diff < 86400) return `${Math.floor(diff / 3600)} 小时前`;
+        return `${Math.floor(diff / 86400)} 天前`;
+    }
+    </script>
+</body>
+</html>

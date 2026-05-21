@@ -1,6 +1,17 @@
 // 济小震 · API接口模块
 const API_BASE_URL = 'http://localhost:5000/api';
 
+// 获取当前用户的 JWT（用于认证请求）
+async function getAuthHeaders() {
+  const headers = { 'Content-Type': 'application/json' };
+  const auth = window.JiXiaoZhen?.Auth;
+  if (auth?.enabled) {
+    const token = await auth.getAccessToken();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
 // 中国地震台网公开API配置
 const CENC_PUBLIC_URL = 'https://www.cenc.ac.cn';
 
