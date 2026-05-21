@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const db = require('./models');
 
 const chatRoutes = require('./routes/chat.routes');
 const quizRoutes = require('./routes/quiz.routes');
@@ -26,7 +27,22 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-app.listen(port, () => {
-  console.log(`🚀 济小震后端服务已启动，运行在 http://localhost:${port}`);
-  console.log(`📡 已注册服务: /api/chat, /api/quiz, /api/earthquake`);
-});
+async function startServer() {
+  try {
+    await db.sequelize.authenticate();
+    console.log('✅ 数据库连接成功');
+
+    await db.sequelize.sync({ force: false });
+    console.log('✅ 数据库表同步完成');
+
+    app.listen(port, () => {
+      console.log(`🚀 济小震后端服务已启动，运行在 http://localhost:${port}`);
+      console.log(`📡 已注册服务: /api/chat, /api/quiz, /api/earthquake`);
+    });
+  } catch (error) {
+    console.error('❌ 服务启动失败:', error);
+    process.exit(1);
+  }
+}
+
+startServer();
