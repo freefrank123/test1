@@ -206,6 +206,16 @@
             </div>
         </div>
 
+        <!-- 3D 建筑结构查看器 -->
+        <div class="card" id="viewer3dCard">
+            <h2><i class="fas fa-cube"></i> 3D 结构预览 <span style="font-size:.75rem;color:var(--text-muted);font-weight:400;">拖拽旋转 · 滚轮缩放 · 右键平移</span></h2>
+            <div id="viewer3dContainer" style="width:100%;height:400px;border-radius:12px;overflow:hidden;background:var(--bg-tertiary);position:relative;">
+                <div id="viewer3dLoading" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text-muted);z-index:10;">
+                    <span><i class="fas fa-spinner fa-pulse"></i> 加载3D引擎...</span>
+                </div>
+            </div>
+        </div>
+
         <!-- 震级选择 -->
         <div class="card" id="magnitudeCard">
             <h2><i class="fas fa-sliders"></i> 震级选择</h2>
@@ -277,11 +287,326 @@
 
     <footer>&copy; 2025 济小震 · 科技防灾平台 | 结构动力学仿真 · 寓教于研</footer>
 
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
     <script src="/frontend/assets/js/supabase.min.js"></script>
     <script src="/frontend/assets/js/config.js"></script>
     <script src="/frontend/assets/js/auth.js"></script>
     <script src="/frontend/assets/js/common.js"></script>
     <script src="/frontend/assets/js/game.js"></script>
     <script src="/frontend/assets/js/main.js"></script>
+    <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    // ==================== 3D 建筑结构查看器 ====================
+    const container = document.getElementById('viewer3dContainer');
+    const loadingEl  = document.getElementById('viewer3dLoading');
+
+    let currentModel = 'masonry';
+    let modelGroup = null;
+
+    // --- 初始化场景 ---
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x1a1f2e);
+
+    const camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.5, 100);
+    camera.position.set(8, 6, 10);
+    camera.lookAt(0, 2, 0);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    container.appendChild(renderer.domElement);
+    loadingEl.style.display = 'none';
+
+    // --- OrbitControls (旋转/缩放/平移) ---
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 2.5, 0);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.minDistance = 4;
+    controls.maxDistance = 20;
+    controls.maxPolarAngle = Math.PI * 0.7;
+    controls.update();
+
+    // --- 光源 ---
+    scene.add(new THREE.AmbientLight(0x404060, 1.8));
+    const sun = new THREE.DirectionalLight(0xffffff, 2.5);
+    sun.position.set(10, 15, 8);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(1024, 1024);
+    sun.shadow.camera.near = 0.5;
+    sun.shadow.camera.far = 60;
+    sun.shadow.camera.left = -15;
+    sun.shadow.camera.right = 15;
+    sun.shadow.camera.top = 15;
+    sun.shadow.camera.bottom = -5;
+    scene.add(sun);
+
+    const fill = new THREE.DirectionalLight(0x8899cc, 0.8);
+    fill.position.set(-4, 2, -4);
+    scene.add(fill);
+
+    // --- 地面 ---
+    const groundGeo = new THREE.PlaneGeometry(30, 30);
+    const groundMat = new THREE.MeshStandardMaterial({ color: 0x2a2a3a, roughness: 0.9 });
+    const ground = new THREE.Mesh(groundGeo, groundMat);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -0.1;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    // 网格线
+    const grid = new THREE.GridHelper(20, 20, 0x444466, 0x222233);
+    scene.add(grid);
+
+    // ==================== 建筑模型工厂 ====================
+    function createMasonry() {
+        const g = new THREE.Group();
+        // 主体 - 矮胖砖混
+        const bodyGeo = new THREE.BoxGeometry(3, 4.5, 2.5);
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0xd4a574, roughness: 0.8, metalness: 0.05 });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.position.y = 2.25;
+        body.castShadow = true; body.receiveShadow = true;
+        g.add(body);
+
+        // 砖缝纹理 - 水平线
+        for (let y = 0.6; y < 4.4; y += 0.6) {
+            const lineGeo = new THREE.BoxGeometry(3.02, 0.03, 2.52);
+            const line = new THREE.Mesh(lineGeo, new THREE.MeshStandardMaterial({ color: 0x8b6914, roughness: 0.5 }));
+            line.position.y = y;
+            g.add(line);
+        }
+        // 屋顶
+        const roofGeo = new THREE.ConeGeometry(2.2, 0.8, 4);
+        const roof = new THREE.Mesh(roofGeo, new THREE.MeshStandardMaterial({ color: 0x8b4513, roughness: 0.7 }));
+        roof.position.y = 4.9;
+        roof.rotation.y = Math.PI / 4;
+        roof.castShadow = true;
+        g.add(roof);
+
+        return g;
+    }
+
+    function createRCFrame() {
+        const g = new THREE.Group();
+        const H = 7, W = 3, D = 2.5;
+        const storyH = 1.4;
+
+        // 楼板
+        for (let i = 0; i <= 5; i++) {
+            const slabGeo = new THREE.BoxGeometry(W, 0.15, D);
+            const slab = new THREE.Mesh(slabGeo, new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.4 }));
+            slab.position.y = i * storyH;
+            slab.castShadow = true; slab.receiveShadow = true;
+            g.add(slab);
+        }
+
+        // 柱子
+        const colGeo = new THREE.BoxGeometry(0.22, H, 0.22);
+        const colMat = new THREE.MeshStandardMaterial({ color: 0x505560, roughness: 0.3, metalness: 0.5 });
+        [[-W/2+0.15, 0, -D/2+0.15], [W/2-0.15, 0, -D/2+0.15],
+         [-W/2+0.15, 0, D/2-0.15], [W/2-0.15, 0, D/2-0.15]].forEach(([cx, _, cz]) => {
+            const col = new THREE.Mesh(colGeo, colMat);
+            col.position.set(cx, H/2, cz);
+            col.castShadow = true;
+            g.add(col);
+        });
+
+        // 填充墙 - 半透明
+        const wallGeo = new THREE.BoxGeometry(W-0.5, storyH-0.2, 0.06);
+        const wallMat = new THREE.MeshStandardMaterial({ color: 0xeeeeff, roughness: 0.5, transparent: true, opacity: 0.35 });
+        for (let i = 1; i <= 5; i++) {
+            const wall = new THREE.Mesh(wallGeo, wallMat);
+            wall.position.set(0, i*storyH - storyH/2, D/2);
+            g.add(wall);
+        }
+
+        return g;
+    }
+
+    function createSteelFrame() {
+        const g = new THREE.Group();
+        const stories = 8;
+        const storyH = 1.2;
+        const H = stories * storyH;
+        const W = 2.2, D = 2.2;
+        const hw = W / 2, hd = D / 2;
+        const steelMat = new THREE.MeshStandardMaterial({ color: 0x3a4a5a, roughness: 0.2, metalness: 0.85 });
+        const braceMat = new THREE.MeshStandardMaterial({ color: 0x7189a5, roughness: 0.3, metalness: 0.7 });
+
+        // 四角主柱
+        const colGeo = new THREE.CylinderGeometry(0.09, 0.09, H, 8);
+        [[-hw, -hd], [hw, -hd], [-hw, hd], [hw, hd]].forEach(([cx, cz]) => {
+            const col = new THREE.Mesh(colGeo, steelMat);
+            col.position.set(cx, H / 2, cz);
+            col.castShadow = true;
+            g.add(col);
+        });
+
+        // 每层楼板环梁 + 四面 X 支撑
+        for (let floor = 1; floor <= stories; floor++) {
+            const y = floor * storyH;
+
+            // 环形横梁 — X 方向 (前后两面)
+            const bxGeo = new THREE.BoxGeometry(W + 0.2, 0.06, 0.1);
+            [
+  [-hw, 0, -hd], [hw, 0, -hd], [-hw, 0, hd], [hw, 0, hd],
+            ].forEach(([cx, _, cz]) => {
+                const bx = new THREE.Mesh(bxGeo, steelMat);
+                bx.position.set(0, y, cz);
+                bx.castShadow = true;
+                g.add(bx);
+            });
+
+            // 环形横梁 — Z 方向 (左右两面)
+            const bzGeo = new THREE.BoxGeometry(0.1, 0.06, D + 0.2);
+            [[-hw, 0, 0], [hw, 0, 0]].forEach(([cx, _, cz]) => {
+                const bz = new THREE.Mesh(bzGeo, steelMat);
+                bz.position.set(cx, y, 0);
+                bz.castShadow = true;
+                g.add(bz);
+            });
+
+            // 四面 X 支撑 (第一层起)
+            if (floor > 1) {
+                const yBot = (floor - 1) * storyH;
+                const yMid = yBot + storyH / 2;
+                const diagLen = Math.sqrt(W * W + storyH * storyH);
+
+                // 前后面 (Z 法线面): 用薄 Box 做斜撑，绕 Y 轴不转，绕 Z 轴转
+                [-hd, hd].forEach(cz => {
+                    const diagGeo = new THREE.BoxGeometry(diagLen, 0.04, 0.04);
+                    [-1, 1].forEach(dir => {
+                        const d1 = new THREE.Mesh(diagGeo, braceMat);
+                        d1.position.set((-hw + W / 4) * dir, yMid, cz);
+                        d1.rotation.z = dir * Math.atan2(storyH, W);
+                        g.add(d1);
+
+                        const d2 = new THREE.Mesh(diagGeo, braceMat);
+                        d2.position.set((hw - W / 4) * dir, yMid, cz);
+                        d2.rotation.z = -dir * Math.atan2(storyH, W);
+                        g.add(d2);
+                    });
+                });
+
+                // 左右面 (X 法线面): 绕 X 轴转
+                [-hw, hw].forEach(cx => {
+                    const diagGeo = new THREE.BoxGeometry(0.04, 0.04, diagLen);
+                    [-1, 1].forEach(dir => {
+                        const d1 = new THREE.Mesh(diagGeo, braceMat);
+                        d1.position.set(cx, yMid, (-hd + D / 4) * dir);
+                        d1.rotation.x = dir * Math.atan2(storyH, D);
+                        g.add(d1);
+
+                        const d2 = new THREE.Mesh(diagGeo, braceMat);
+                        d2.position.set(cx, yMid, (hd - D / 4) * dir);
+                        d2.rotation.x = -dir * Math.atan2(storyH, D);
+                        g.add(d2);
+                    });
+                });
+            }
+        }
+
+        // 顶部小帽
+        const capGeo = new THREE.ConeGeometry(W / 2 + 0.1, 0.35, 4);
+        const cap = new THREE.Mesh(capGeo, steelMat);
+        cap.position.y = H + 0.18;
+        cap.rotation.y = Math.PI / 4;
+        g.add(cap);
+
+        return g;
+    }
+
+    function createShearWall() {
+        const g = new THREE.Group();
+        const W = 4.5, D = 2.8;
+        const storyH = 2;
+        const stories = 3;
+
+        // 主体 - 巨大的实心块
+        const bodyGeo = new THREE.BoxGeometry(W, stories*storyH, D);
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0xd5dbdb, roughness: 0.65, metalness: 0.05 });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.position.y = stories*storyH/2;
+        body.castShadow = true; body.receiveShadow = true;
+        g.add(body);
+
+        // 楼板线
+        for (let i = 1; i < stories; i++) {
+            const lineGeo = new THREE.BoxGeometry(W+0.05, 0.06, D+0.05);
+            const line = new THREE.Mesh(lineGeo, new THREE.MeshStandardMaterial({ color: 0x566573, roughness: 0.3 }));
+            line.position.y = i * storyH;
+            g.add(line);
+        }
+
+        // 极小窗洞 - 墙壁上开几个小洞
+        const holeGeo = new THREE.BoxGeometry(0.4, 0.5, 0.2);
+        const holeMat = new THREE.MeshStandardMaterial({ color: 0x8899aa, roughness: 0.3, metalness: 0.6 });
+        for (let s = 0; s < stories; s++) {
+            [[-W/4, s*storyH+1.1, D/2], [W/4, s*storyH+1.1, D/2]].forEach(([hx, hy, hz]) => {
+                const hole = new THREE.Mesh(holeGeo, holeMat);
+                hole.position.set(hx, hy, hz);
+                g.add(hole);
+            });
+        }
+
+        return g;
+    }
+
+    // ==================== 切换模型 ====================
+    const builders = { masonry: createMasonry, rcframe: createRCFrame, steel: createSteelFrame, shearwall: createShearWall };
+
+    function switchModel(type) {
+        if (currentModel === type && modelGroup) return;
+        if (modelGroup) scene.remove(modelGroup);
+        currentModel = type;
+        modelGroup = builders[type]();
+        scene.add(modelGroup);
+
+        // 根据建筑类型调整相机距离
+        const heights = { masonry: 4.5, rcframe: 7, steel: 10, shearwall: 6 };
+        controls.target.set(0, heights[type] / 2, 0);
+        controls.update();
+    }
+
+    // --- 绑定建筑卡片点击 ---
+    document.querySelectorAll('.building-card').forEach(card => {
+        const origClick = card.onclick;
+        card.addEventListener('click', function(e) {
+            const type = this.dataset.type;
+            if (type && builders[type]) switchModel(type);
+        });
+    });
+
+    // --- 渲染循环 ---
+    function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
+    }
+
+    // --- 响应式 ---
+    window.addEventListener('resize', () => {
+        camera.aspect = container.clientWidth / container.clientHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(container.clientWidth, container.clientHeight);
+    });
+
+    // --- 启动 ---
+    switchModel('masonry');
+    animate();
+    console.log('🧊 3D 建筑查看器已就绪');
+    </script>
 </body>
 </html>

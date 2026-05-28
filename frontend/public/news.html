@@ -120,6 +120,14 @@
                         <i class="fas fa-external-link-alt"></i> 官方查询
                     </a>
                 </div>
+
+                <!-- 最近搜索记录 -->
+                <div id="recentSearches" style="display:none; margin-top:1rem; padding-top:1rem; border-top:1px solid var(--border-subtle);">
+                    <label style="font-weight:600;color:var(--text-secondary);font-size:.85rem;display:flex;align-items:center;gap:.4rem;">
+                        <i class="fas fa-clock-rotate-left"></i> 最近搜索
+                    </label>
+                    <div id="recentSearchList" style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.6rem;"></div>
+                </div>
             </div>
         </div>
 
@@ -453,13 +461,13 @@
         // 页面加载时执行
         document.addEventListener('DOMContentLoaded', function() {
             loadEarthquakeData();
-            
+            loadRecentSearches();
+
             // 绑定刷新按钮事件
             const refreshBtn = document.getElementById('refreshBtn');
             if (refreshBtn) {
                 refreshBtn.addEventListener('click', function() {
                     const container = document.getElementById('earthquakeFeed');
-                    // 显示加载状态
                     container.innerHTML = `
                         <div class="loading-container" style="text-align: center; padding: 2rem;">
                             <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: #3498db;"></i>
@@ -470,6 +478,87 @@
                 });
             }
         });
+
+        // ==================== 搜索历史 ====================
+        async function loadRecentSearches() {
+            const container = document.getElementById('recentSearches');
+            const list = document.getElementById('recentSearchList');
+            if (!container || !list) return;
+
+            const User = window.JiXiaoZhen?.User;
+            if (!User) return;
+
+            const history = await User.getSearchHistory(6);
+            if (!history || history.length === 0) return;
+
+            container.style.display = 'block';
+            list.innerHTML = history.map(h => {
+                const q = h.query || {};
+                const label = formatSearchLabel(q);
+                return `
+                    <span class="search-chip" data-query='${JSON.stringify(q)}'
+                          title="${timeAgo(h.searched_at)}" style="
+                        display:inline-flex;align-items:center;gap:.35rem;
+                        padding:.35rem .7rem;background:var(--bg-tertiary);
+                        border:1px solid var(--border-subtle);border-radius:16px;
+                        cursor:pointer;font-size:.8rem;color:var(--text-secondary);
+                        transition:all .2s ease;white-space:nowrap;">
+                        <i class="fas fa-search" style="font-size:.65rem;opacity:.5;"></i>
+                        ${label}
+                    </span>
+                `;
+            }).join('');
+
+            // 点击搜索历史 chip → 填入筛选条件并搜索
+            list.querySelectorAll('.search-chip').forEach(chip => {
+                chip.addEventListener('click', function() {
+                    const q = JSON.parse(this.dataset.query);
+                    applyFilters(q);
+                    document.getElementById('searchHistoryBtn').click();
+                });
+                chip.addEventListener('mouseenter', function() {
+                    this.style.background = 'var(--accent-tertiary)';
+                    this.style.borderColor = 'var(--accent-primary)';
+                });
+                chip.addEventListener('mouseleave', function() {
+                    this.style.background = 'var(--bg-tertiary)';
+                    this.style.borderColor = 'var(--border-subtle)';
+                });
+            });
+        }
+
+        function formatSearchLabel(q) {
+            const parts = [];
+            if (q.min_mag && q.max_mag) parts.push('M' + q.min_mag + '-' + q.max_mag);
+            else if (q.min_mag) parts.push('≥M' + q.min_mag);
+            if (q.start_date) parts.push(q.start_date.slice(0, 10).replace(/-/g, '/'));
+            return parts.join(' · ') || '默认筛选';
+        }
+
+        function applyFilters(q) {
+            // 震级
+            if (q.min_mag && q.max_mag) {
+                document.querySelector('input[name="magType"][value="custom"]').checked = true;
+                togglePanel('magType', document.getElementById('customMagRange'));
+                document.getElementById('minMag').value = q.min_mag;
+                document.getElementById('maxMag').value = q.max_mag;
+            }
+            // 日期
+            if (q.start_date) {
+                document.querySelector('input[name="dateType"][value="custom"]').checked = true;
+                togglePanel('dateType', document.getElementById('customDateRange'));
+                document.getElementById('startDate').value = q.start_date;
+                if (q.end_date) document.getElementById('endDate').value = q.end_date;
+            }
+        }
+
+        function timeAgo(dateStr) {
+            const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+            if (diff < 60) return '刚刚';
+            if (diff < 3600) return Math.floor(diff / 60) + ' 分钟前';
+            if (diff < 86400) return Math.floor(diff / 3600) + ' 小时前';
+            return Math.floor(diff / 86400) + ' 天前';
+        }
     </script>
 
     <style>
