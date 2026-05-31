@@ -341,6 +341,55 @@ async function apiGetEmergencyInfo() {
   return null;
 }
 
+// 获取知识列表
+async function apiGetKnowledge(category = '') {
+  try {
+    let url = `${API_BASE_URL}/knowledge`;
+    if (category) {
+      url = `${API_BASE_URL}/knowledge/category/${category}`;
+    }
+    const response = await fetch(url);
+    if (response.ok) {
+      const data = await response.json();
+      if (data.success && data.data) return data.data;
+    }
+    console.warn('获取知识列表失败');
+  } catch (err) {
+    console.error('获取知识列表错误：', err);
+  }
+  return [];
+}
+
+// 搜索知识
+async function apiSearchKnowledge(keyword) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/knowledge/search?keyword=${encodeURIComponent(keyword)}`);
+    if (response.ok) {
+      const data = await response.json();
+      if (data.success && data.data) return data.data;
+    }
+    console.warn('搜索知识失败');
+  } catch (err) {
+    console.error('搜索知识错误：', err);
+  }
+  return [];
+}
+
+// 获取知识详情
+async function apiGetKnowledgeById(id) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/knowledge/${id}`);
+    if (response.ok) {
+      const data = await response.json();
+      if (data.success && data.data) return data.data;
+    }
+    console.warn('获取知识详情失败');
+  } catch (err) {
+    console.error('获取知识详情错误：', err);
+  }
+  return null;
+}
+
 // 暴露到全局
 window.JiXiaoZhen = window.JiXiaoZhen || {};
 window.JiXiaoZhen.API = {
@@ -353,6 +402,9 @@ window.JiXiaoZhen.API = {
   apiGetEarthquakeData: apiGetEarthquakeData,
   apiSearchEarthquake: apiSearchEarthquake,
   apiGetEmergencyInfo: apiGetEmergencyInfo,
+  apiGetKnowledge: apiGetKnowledge,
+  apiSearchKnowledge: apiSearchKnowledge,
+  apiGetKnowledgeById: apiGetKnowledgeById,
   getCencEarthquakeData: getCencEarthquakeData,
   getLatestEarthquakes: getLatestEarthquakes
 };

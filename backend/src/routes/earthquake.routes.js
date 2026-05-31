@@ -3,9 +3,9 @@ const earthquakeController = require('../controllers/earthquake.controller');
 
 const router = express.Router();
 
-router.get('/earthquake/latest', earthquakeController.getLatest);
-router.get('/earthquake/news', earthquakeController.getNews);
-router.get('/earthquake/search', earthquakeController.search);
-router.get('/earthquake/emergency', earthquakeController.getEmergencyInfo);
+router.get('/latest', earthquakeController.getLatest);
+router.get('/news', earthquakeController.getNews);
+router.get('/search', earthquakeController.search);
+router.get('/emergency', earthquakeController.getEmergencyInfo);
 
 module.exports = router;
