@@ -137,11 +137,31 @@ DROP POLICY IF EXISTS "Users can insert own scores" ON public.test_scores;
 CREATE POLICY "Users can insert own scores" ON public.test_scores
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
--- 7. 测验结果详情表
+-- 7. 测验题目表
+CREATE TABLE IF NOT EXISTS public.quizzes (
+  id BIGSERIAL PRIMARY KEY,
+  title TEXT NOT NULL,
+  options JSONB NOT NULL,
+  answer INTEGER NOT NULL CHECK (answer >= 0),
+  explanation TEXT,
+  category TEXT DEFAULT 'earthquake',
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_quizzes_category ON public.quizzes(category);
+
+ALTER TABLE public.quizzes ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Anyone can read quizzes" ON public.quizzes;
+CREATE POLICY "Anyone can read quizzes" ON public.quizzes
+  FOR SELECT USING (true);
+
+-- 8. 测验结果详情表
 CREATE TABLE IF NOT EXISTS public.quiz_results (
   id BIGSERIAL PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-  quiz_id INTEGER NOT NULL,
+  quiz_id INTEGER NOT NULL REFERENCES public.quizzes(id) ON DELETE CASCADE,
   score INTEGER NOT NULL CHECK (score >= 0),
   total_questions INTEGER NOT NULL CHECK (total_questions > 0),
   correct_count INTEGER DEFAULT 0 CHECK (correct_count >= 0),
