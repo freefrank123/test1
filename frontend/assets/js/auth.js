@@ -122,7 +122,10 @@
               <span class="dropdown-email">${escapeHtml(email)}</span>
             </div>
             <a href="profile.html"><i class="fas fa-user"></i> 个人主页</a>
+            <a href="admin.html"><i class="fas fa-pen-to-square"></i> 知识管理</a>
             <a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> 退出登录</a>
+            <div style="border-top:1px solid var(--border-subtle);margin:.3rem 0;"></div>
+            <a href="#" id="deleteAccountNav" style="color:#ef4444;"><i class="fas fa-trash"></i> 注销账户</a>
           </div>
         </div>
       `;
@@ -136,6 +139,18 @@
         e.preventDefault();
         await signOut();
         window.location.reload();
+      });
+
+      document.getElementById('deleteAccountNav').addEventListener('click', async function (e) {
+        e.preventDefault();
+        if (!confirm('确定要注销账户吗？所有数据将被永久删除。')) return;
+        if (!confirm('再次确认：真的要注销账户吗？此操作不可撤销。')) return;
+        try {
+          const user = window.JiXiaoZhen?.User;
+          if (user) await user.deleteAccount();
+        } catch (err) {
+          alert('注销失败：' + (err.message || '未知错误'));
+        }
       });
 
       document.addEventListener('click', function () {
