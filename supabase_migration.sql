@@ -112,3 +112,30 @@ CREATE POLICY "Users can read own scores" ON public.test_scores
 DROP POLICY IF EXISTS "Users can insert own scores" ON public.test_scores;
 CREATE POLICY "Users can insert own scores" ON public.test_scores
   FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- 6. 测验结果详情表（与互动测验区联动）
+CREATE TABLE IF NOT EXISTS public.quiz_results (
+  id BIGSERIAL PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  quiz_id INTEGER NOT NULL,
+  score INTEGER NOT NULL CHECK (score >= 0),
+  total_questions INTEGER NOT NULL CHECK (total_questions > 0),
+  correct_count INTEGER DEFAULT 0 CHECK (correct_count >= 0),
+  answers JSONB,
+  accuracy FLOAT DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_quiz_results_user_id ON public.quiz_results(user_id);
+CREATE INDEX IF NOT EXISTS idx_quiz_results_created_at ON public.quiz_results(created_at DESC);
+
+ALTER TABLE public.quiz_results ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can read own quiz results" ON public.quiz_results;
+CREATE POLICY "Users can read own quiz results" ON public.quiz_results
+  FOR SELECT USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can insert own quiz results" ON public.quiz_results;
+CREATE POLICY "Users can insert own quiz results" ON public.quiz_results
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
