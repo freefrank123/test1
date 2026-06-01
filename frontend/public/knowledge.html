@@ -127,42 +127,35 @@
                 <input type="text" id="searchInput" placeholder="输入关键词：地震成因、震级分类、避震技巧、急救措施...">
                 <button id="searchBtn" class="btn-primary"><i class="fas fa-search"></i> 检索</button>
             </div>
-            
-            <!-- 知识分类区域 -->
-            <div id="knowledgeContainer">
-                <!-- 分类列表 -->
-                <div id="categoryList" style="margin-top:1.5rem;">
-                    <div class="knowledge-category" data-cat="def">
-                        <h3><i class="fas fa-globe"></i> 地震科普知识</h3>
-                        <p>地震的成因、震级与烈度、地震波传播原理等基础科普内容</p>
-                    </div>
-                    <div class="knowledge-category" data-cat="mag">
-                        <h3><i class="fas fa-chart-line"></i> 专家文章</h3>
-                        <p>地震学专家撰写的深度分析文章与最新研究成果</p>
-                    </div>
-                    <div class="knowledge-category" data-cat="firstaid">
-                        <h3><i class="fas fa-hand-holding-heart"></i> 急救知识科普</h3>
-                        <p>震后自救互救、伤员转运、心理疏导等实用急救技能</p>
-                    </div>
-                    <div class="knowledge-category" data-cat="building">
-                        <h3><i class="fas fa-building-shield"></i> 建筑抗震</h3>
-                        <p>抗震设计原理、减隔震技术、房屋抗震加固方法</p>
-                    </div>
-                </div>
 
-                <!-- 知识列表 -->
-                <div id="knowledgeList" style="display: none; margin-top: 1.5rem;">
-                    <a href="#" class="back-btn" id="backBtn">
-                        <i class="fas fa-arrow-left"></i> 返回分类
-                    </a>
+            <!-- 四大分类卡片 — 点击跳转子页面 -->
+            <div id="searchResult" style="margin-top:1.5rem;">
+                <a href="knowledge-science.html" class="knowledge-category" data-cat="def" style="text-decoration:none;display:block;">
+                    <h3><i class="fas fa-globe"></i> 地震科普知识</h3>
+                    <p>地震的成因、震级与烈度、地震波传播原理等基础科普内容</p>
+                </a>
+                <a href="knowledge-expert.html" class="knowledge-category" data-cat="mag" style="text-decoration:none;display:block;">
+                    <h3><i class="fas fa-chart-line"></i> 专家文章</h3>
+                    <p>地震学专家撰写的深度分析文章与最新研究成果</p>
+                </a>
+                <a href="knowledge-firstaid.html" class="knowledge-category" data-cat="firstaid" style="text-decoration:none;display:block;">
+                    <h3><i class="fas fa-hand-holding-heart"></i> 急救知识科普</h3>
+                    <p>震后自救互救、伤员转运、心理疏导等实用急救技能</p>
+                </a>
+                <a href="knowledge-building.html" class="knowledge-category" data-cat="building" style="text-decoration:none;display:block;">
+                    <h3><i class="fas fa-building-shield"></i> 建筑抗震</h3>
+                    <p>抗震设计原理、减隔震技术、房屋抗震加固方法</p>
+                </a>
+            </div>
+
+            <!-- 后端驱动的动态知识列表/详情（队友扩展） -->
+            <div id="knowledgeContainer">
+                <div id="knowledgeList" style="display:none;margin-top:1.5rem;">
+                    <a href="#" class="back-btn" id="backBtn"><i class="fas fa-arrow-left"></i> 返回分类</a>
                     <div id="listContent"></div>
                 </div>
-
-                <!-- 知识详情 -->
-                <div id="knowledgeDetail" style="display: none; margin-top: 1.5rem;">
-                    <a href="#" class="back-btn" id="backToListBtn">
-                        <i class="fas fa-arrow-left"></i> 返回列表
-                    </a>
+                <div id="knowledgeDetail" style="display:none;margin-top:1.5rem;">
+                    <a href="#" class="back-btn" id="backToListBtn"><i class="fas fa-arrow-left"></i> 返回列表</a>
                     <div id="detailContent"></div>
                 </div>
             </div>
@@ -191,196 +184,136 @@
     <script src="/frontend/assets/js/api.js"></script>
     <script src="/frontend/assets/js/user.js"></script>
     <script src="/frontend/assets/js/dt.js"></script>
-    <script>
-        // 确保测验模块在页面加载完成后初始化
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('🔍 检查测验模块...');
-            if (window.JiXiaoZhen && window.JiXiaoZhen.Quiz) {
-                console.log('✅ Quiz模块存在，尝试初始化');
-                window.JiXiaoZhen.Quiz.init();
-            } else {
-                console.log('❌ Quiz模块未找到');
-            }
-        });
-    </script>
     <script src="/frontend/assets/js/main.js"></script>
     <script>
-        const categoryNames = {
-            'def': '地震科普知识',
-            'mag': '专家文章',
-            'firstaid': '急救知识科普',
-            'building': '建筑抗震'
-        };
+    // ==================== 知识中心交互逻辑（队友扩展） ====================
+    (function() {
+        const searchInput = document.getElementById('searchInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const categoryList = document.getElementById('searchResult');
+        const knowledgeList = document.getElementById('knowledgeList');
+        const listContent = document.getElementById('listContent');
+        const knowledgeDetail = document.getElementById('knowledgeDetail');
+        const detailContent = document.getElementById('detailContent');
+        const backBtn = document.getElementById('backBtn');
+        const backToListBtn = document.getElementById('backToListBtn');
 
-        async function loadKnowledgeByCategory(category) {
-            const knowledge = await JiXiaoZhen.API.apiGetKnowledge(category);
-            
-            if (knowledge.length === 0) {
-                document.getElementById('listContent').innerHTML = `
-                    <div class="empty-state">
-                        <i class="fas fa-folder-open"></i>
-                        <div>暂无相关知识</div>
-                    </div>
-                `;
-                return;
-            }
+        // 搜索
+        if (searchBtn) {
+            searchBtn.addEventListener('click', async function() {
+                const keyword = searchInput.value.trim();
+                if (!keyword) return;
+                categoryList.style.display = 'none';
+                knowledgeDetail.style.display = 'none';
+                knowledgeList.style.display = 'block';
+                listContent.innerHTML = '<p style="color:var(--text-muted);"><i class="fas fa-spinner fa-pulse"></i> 搜索中...</p>';
 
-            document.getElementById('listContent').innerHTML = knowledge.map(item => `
+                try {
+                    const resp = await fetch(`http://localhost:5000/api/knowledge/search?keyword=${encodeURIComponent(keyword)}`);
+                    const data = await resp.json();
+                    if (data.success && data.data.length > 0) {
+                        renderKnowledgeList(data.data);
+                    } else {
+                        listContent.innerHTML = '<p style="color:var(--text-muted);">未找到相关内容</p>';
+                    }
+                } catch (err) {
+                    listContent.innerHTML = '<p style="color:#ef4444;">搜索失败：' + err.message + '</p>';
+                }
+            });
+        }
+
+        // 分类卡片点击（动态加载模式 — 队友扩展用）
+        document.querySelectorAll('.knowledge-category').forEach(card => {
+            card.addEventListener('click', async function(e) {
+                // 如果是 <a> 标签且 href 指向子页面，不拦截跳转
+                if (this.tagName === 'A' && this.getAttribute('href') !== '#') return;
+                e.preventDefault();
+                const cat = this.dataset.cat;
+                categoryList.style.display = 'none';
+                knowledgeDetail.style.display = 'none';
+                knowledgeList.style.display = 'block';
+                listContent.innerHTML = '<p style="color:var(--text-muted);"><i class="fas fa-spinner fa-pulse"></i> 加载中...</p>';
+
+                try {
+                    const resp = await fetch(`http://localhost:5000/api/knowledge/category/${cat}`);
+                    const data = await resp.json();
+                    if (data.success && data.data.length > 0) {
+                        renderKnowledgeList(data.data);
+                    } else {
+                        listContent.innerHTML = '<p style="color:var(--text-muted);">该分类暂无内容</p>';
+                    }
+                } catch (err) {
+                    listContent.innerHTML = '<p style="color:#ef4444;">加载失败：' + err.message + '</p>';
+                }
+            });
+        });
+
+        // 返回分类
+        if (backBtn) backBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            knowledgeList.style.display = 'none';
+            knowledgeDetail.style.display = 'none';
+            categoryList.style.display = 'block';
+        });
+
+        if (backToListBtn) backToListBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            knowledgeDetail.style.display = 'none';
+            knowledgeList.style.display = 'block';
+        });
+
+        function renderKnowledgeList(items) {
+            listContent.innerHTML = items.map(item => `
                 <div class="knowledge-item" data-id="${item.id}">
-                    <h4>${item.title}</h4>
-                    <p>${item.summary || item.content.substring(0, 100)}...</p>
+                    <h4>${escapeHtml(item.title)}</h4>
+                    <p>${escapeHtml(item.summary || item.content || '暂无摘要')}</p>
                     <div class="knowledge-meta">
-                        <span><i class="fas fa-user"></i> ${item.author || '未知'}</span>
-                        <span><i class="fas fa-eye"></i> ${item.viewCount || 0}</span>
-                        <span><i class="fas fa-calendar"></i> ${formatDate(item.createdAt)}</span>
+                        <span><i class="fas fa-tag"></i> ${escapeHtml(item.category || '')}</span>
+                        <span><i class="fas fa-clock"></i> ${item.created_at ? new Date(item.created_at).toLocaleDateString('zh-CN') : ''}</span>
                     </div>
                 </div>
             `).join('');
-            
-            // 为知识条目添加点击事件
+
             document.querySelectorAll('.knowledge-item').forEach(el => {
-                el.addEventListener('click', function() {
-                    const id = parseInt(this.dataset.id);
-                    console.log('📖 点击知识条目:', id);
-                    document.getElementById('knowledgeList').style.display = 'none';
-                    document.getElementById('knowledgeDetail').style.display = 'block';
-                    loadKnowledgeDetail(id);
+                el.addEventListener('click', async function() {
+                    const id = this.dataset.id;
+                    knowledgeList.style.display = 'none';
+                    knowledgeDetail.style.display = 'block';
+                    detailContent.innerHTML = '<p style="color:var(--text-muted);"><i class="fas fa-spinner fa-pulse"></i> 加载详情...</p>';
+
+                    try {
+                        const resp = await fetch(`http://localhost:5000/api/knowledge/${id}`);
+                        const data = await resp.json();
+                        if (data.success && data.data) {
+                            renderDetail(data.data);
+                        }
+                    } catch (err) {
+                        detailContent.innerHTML = '<p style="color:#ef4444;">加载失败</p>';
+                    }
                 });
             });
         }
 
-        async function loadKnowledgeDetail(id) {
-            const knowledge = await JiXiaoZhen.API.apiGetKnowledgeById(id);
-            
-            if (!knowledge) {
-                document.getElementById('detailContent').innerHTML = `
-                    <div class="empty-state">
-                        <i class="fas fa-exclamation-circle"></i>
-                        <div>未找到该知识文章</div>
-                    </div>
-                `;
-                return;
-            }
-
-            document.getElementById('detailContent').innerHTML = `
-                <h2>${knowledge.title}</h2>
+        function renderDetail(item) {
+            detailContent.innerHTML = `
+                <h2 style="color:var(--accent-primary);margin-bottom:1rem;">${escapeHtml(item.title)}</h2>
                 <div class="detail-meta">
-                    <div class="detail-meta-item"><i class="fas fa-folder"></i> ${categoryNames[knowledge.category] || knowledge.category}</div>
-                    <div class="detail-meta-item"><i class="fas fa-user"></i> ${knowledge.author || '未知'}</div>
-                    <div class="detail-meta-item"><i class="fas fa-eye"></i> ${knowledge.viewCount || 0}</div>
-                    <div class="detail-meta-item"><i class="fas fa-calendar"></i> ${formatDate(knowledge.createdAt)}</div>
-                    ${knowledge.source ? `<div class="detail-meta-item"><i class="fas fa-link"></i> ${knowledge.source}</div>` : ''}
+                    <div class="detail-meta-item"><i class="fas fa-tag"></i> ${escapeHtml(item.category || '')}</div>
+                    <div class="detail-meta-item"><i class="fas fa-clock"></i> ${item.created_at ? new Date(item.created_at).toLocaleString('zh-CN') : ''}</div>
+                    ${item.author ? `<div class="detail-meta-item"><i class="fas fa-user"></i> ${escapeHtml(item.author)}</div>` : ''}
                 </div>
-                ${knowledge.keywords ? `
-                    <div class="keywords">
-                        ${knowledge.keywords.split(/[,，]/).map(k => `<span class="keyword-tag">${k.trim()}</span>`).join('')}
-                    </div>
-                ` : ''}
-                ${knowledge.summary ? `<h3>摘要</h3><p>${knowledge.summary}</p>` : ''}
-                <div class="detail-content">${knowledge.content.replace(/\n/g, '<p></p>')}</div>
+                <div class="detail-content">${item.content || '暂无内容'}</div>
+                ${item.keywords ? `<div class="keywords">${item.keywords.split(',').map(k => `<span class="keyword-tag">${escapeHtml(k.trim())}</span>`).join('')}</div>` : ''}
             `;
         }
 
-        function formatDate(dateStr) {
-            if (!dateStr) return '未知';
-            const date = new Date(dateStr);
-            return date.toLocaleDateString('zh-CN');
+        function escapeHtml(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
         }
-
-        function initKnowledgePage() {
-            console.log('🎯 初始化知识页面');
-            
-            // 点击分类加载知识列表
-            document.querySelectorAll('.knowledge-category').forEach(el => {
-                el.addEventListener('click', () => {
-                    const category = el.dataset.cat;
-                    document.getElementById('categoryList').style.display = 'none';
-                    document.getElementById('knowledgeList').style.display = 'block';
-                    document.getElementById('knowledgeDetail').style.display = 'none';
-                    document.querySelector('.card h2').textContent = `📚 ${categoryNames[category]}`;
-                    loadKnowledgeByCategory(category);
-                });
-            });
-
-            // 返回分类
-            document.getElementById('backBtn').addEventListener('click', (e) => {
-                e.preventDefault();
-                document.getElementById('categoryList').style.display = 'block';
-                document.getElementById('knowledgeList').style.display = 'none';
-                document.getElementById('knowledgeDetail').style.display = 'none';
-                document.querySelector('.card h2').innerHTML = '<i class="fas fa-search"></i> 知识中枢 · 智能搜索';
-            });
-
-            // 返回列表
-            document.getElementById('backToListBtn').addEventListener('click', (e) => {
-                e.preventDefault();
-                document.getElementById('knowledgeDetail').style.display = 'none';
-                document.getElementById('knowledgeList').style.display = 'block';
-            });
-
-            // 搜索功能
-            document.getElementById('searchBtn').addEventListener('click', async () => {
-                const keyword = document.getElementById('searchInput').value.trim();
-                if (!keyword) return;
-                
-                const results = await JiXiaoZhen.API.apiSearchKnowledge(keyword);
-                
-                if (results.length === 0) {
-                    document.getElementById('categoryList').style.display = 'none';
-                    document.getElementById('knowledgeList').style.display = 'block';
-                    document.getElementById('knowledgeDetail').style.display = 'none';
-                    document.querySelector('.card h2').textContent = `🔍 搜索结果："${keyword}"`;
-                    document.getElementById('listContent').innerHTML = `
-                        <div class="empty-state">
-                            <i class="fas fa-search"></i>
-                            <div>未找到相关知识</div>
-                        </div>
-                    `;
-                    return;
-                }
-
-                document.getElementById('categoryList').style.display = 'none';
-                document.getElementById('knowledgeList').style.display = 'block';
-                document.getElementById('knowledgeDetail').style.display = 'none';
-                document.querySelector('.card h2').textContent = `🔍 搜索结果："${keyword}"（${results.length}条）`;
-                document.getElementById('listContent').innerHTML = results.map(item => `
-                    <div class="knowledge-item" data-id="${item.id}">
-                        <h4>${item.title}</h4>
-                        <p>${item.summary || item.content.substring(0, 100)}...</p>
-                        <div class="knowledge-meta">
-                            <span><i class="fas fa-folder"></i> ${categoryNames[item.category]}</span>
-                            <span><i class="fas fa-user"></i> ${item.author || '未知'}</span>
-                            <span><i class="fas fa-eye"></i> ${item.viewCount || 0}</span>
-                        </div>
-                    </div>
-                `).join('');
-                
-                // 为搜索结果的知识条目添加点击事件
-                document.querySelectorAll('.knowledge-item').forEach(el => {
-                    el.addEventListener('click', function() {
-                        const id = parseInt(this.dataset.id);
-                        console.log('🔍 点击搜索结果:', id);
-                        document.getElementById('knowledgeList').style.display = 'none';
-                        document.getElementById('knowledgeDetail').style.display = 'block';
-                        loadKnowledgeDetail(id);
-                    });
-                });
-            });
-
-            // 回车键搜索
-            document.getElementById('searchInput').addEventListener('keyup', (e) => {
-                if (e.key === 'Enter') {
-                    document.getElementById('searchBtn').click();
-                }
-            });
-        }
-
-        // 确保DOM加载完成后初始化
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initKnowledgePage);
-        } else {
-            initKnowledgePage();
-        }
+    })();
     </script>
 </body>
 </html>

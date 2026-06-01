@@ -199,6 +199,7 @@ class EarthquakeSimulator {
   constructor() {
     this.selectedType = null;
     this.magnitude = 5.0;
+    this.waveType = 'synthetic'; // 'synthetic' | 'kobe'
     this.isSimulating = false;
     this.animFrame = null;
 
@@ -218,6 +219,9 @@ class EarthquakeSimulator {
 
     // 模拟结果
     this.simResult = null;
+
+    // Kobe 真实地震波数据
+    this.kobeData = null;
   }
 
   init() {
@@ -245,6 +249,14 @@ class EarthquakeSimulator {
     if (startBtn) startBtn.addEventListener('click', () => this.startSimulation());
     const resetBtn = document.getElementById('resetSimBtn');
     if (resetBtn) resetBtn.addEventListener('click', () => this.reset());
+
+    // 地震波选择按钮
+    document.querySelectorAll('.wave-btn').forEach(btn => {
+      btn.addEventListener('click', () => this.selectWave(btn.dataset.wave));
+    });
+
+    // 预加载 Kobe 地震波
+    this.loadKobeData();
 
     // 响应式canvas
     this.resizeCanvas();
@@ -283,6 +295,48 @@ class EarthquakeSimulator {
     else if (val < 7) { tag.textContent = '强震'; tag.style.background = '#f97316'; }
     else if (val < 8) { tag.textContent = '大震'; tag.style.background = '#ef4444'; }
     else              { tag.textContent = '巨震'; tag.style.background = '#991b1b'; }
+  }
+
+  // ---------- 地震波选择 ----------
+  async loadKobeData() {
+    try {
+      const resp = await fetch('/frontend/assets/data/kobe.json');
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      this.kobeData = await resp.json();
+      console.log('🌊 Kobe 1995 地震波已加载:', this.kobeData.accel.length, '点, PGA:', this.kobeData.peak.toFixed(3), 'g');
+    } catch (err) {
+      console.warn('⚠ Kobe 地震波加载失败，仅可用人工合成波:', err.message);
+    }
+  }
+
+  selectWave(type) {
+    if (this.isSimulating) return;
+    this.waveType = type;
+    document.querySelectorAll('.wave-btn').forEach(b => b.classList.toggle('active', b.dataset.wave === type));
+    const info = document.getElementById('waveInfo');
+    if (type === 'kobe' && this.kobeData) {
+      info.innerHTML = '<i class="fas fa-check-circle" style="color:#10b981;"></i> Kobe 1995 (Mw 6.9) — 记录于神户海洋气象台，PGA = ' + this.kobeData.peak.toFixed(3) + ' g，持时 50s';
+    } else if (type === 'kobe') {
+      info.innerHTML = '<i class="fas fa-exclamation-triangle" style="color:#f59e0b;"></i> Kobe 地震波数据加载失败，请刷新页面重试';
+    } else {
+      info.innerHTML = '基于震级和场地特征随机合成的加速度时程';
+    }
+  }
+
+  /** 获取地震动：人工合成 或 Kobe 缩放 */
+  getGroundMotion(magnitude, duration) {
+    if (this.waveType === 'kobe' && this.kobeData) {
+      // 将 Kobe 数据缩放到目标震级对应的 PGA
+      const targetPGA = calcPGA(magnitude);
+      const scale = targetPGA / this.kobeData.peak;
+      const src = this.kobeData.accel;
+      const out = new Float32Array(src.length);
+      for (let i = 0; i < src.length; i++) out[i] = src[i] * scale;
+      return { data: out, dt: this.kobeData.dt, name: 'Kobe 1995' };
+    }
+    // 人工合成
+    const data = generateGroundMotion(magnitude, duration, this.dt);
+    return { data, dt: this.dt, name: 'Synthetic' };
   }
 
   // ---------- 模拟 ----------
@@ -337,17 +391,18 @@ class EarthquakeSimulator {
     const D = Math.min(1.0, rawD);
     const grade = getDamageGrade(D);
 
-    // 生成地震动 (总时长随震级增加)
-    const totalDuration = 8 + this.magnitude * 2; // seconds
-    const totalSamples = Math.floor(totalDuration / this.dt);
-    this.groundMotion = generateGroundMotion(this.magnitude, totalDuration, this.dt);
+    // 获取地震动（人工合成 或 真实记录）
+    const totalDuration = 8 + this.magnitude * 2;
+    const gm = this.getGroundMotion(this.magnitude, totalDuration);
+    this.groundMotion = gm.data;
+    const simDt = gm.dt || this.dt;
 
     // SDOF响应
-    const resp = computeSDOF(this.groundMotion, this.dt, bd.T, bd.xi);
+    const resp = computeSDOF(this.groundMotion, simDt, bd.T, bd.xi);
     this.buildingResponse = resp;
 
     // 找到响应最强的窗口（~6秒窗口用于播放）
-    const animSamples = Math.floor(6000 / (this.dt * 1000));
+    const animSamples = Math.floor(6000 / (simDt * 1000));
     this.displayWindow = this.findPeakWindow(animSamples);
 
     // 保存结果
@@ -358,7 +413,8 @@ class EarthquakeSimulator {
       componentDamages: this.calcComponentDamages(D, bd),
       groundPeak: this.findArrayPeak(this.groundMotion),
       respPeak: this.findArrayPeak(resp.disp),
-      totalDuration, dt: this.dt
+      totalDuration, dt: simDt,
+      waveType: this.waveType, waveName: gm.name
     };
 
     // 启动动画

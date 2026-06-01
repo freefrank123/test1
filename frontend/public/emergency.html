@@ -52,8 +52,22 @@
         </div>
 
         <div class="card">
-            <h2><i class="fas fa-robot"></i> AI 应急决策助手</h2>
-            <div class="chat-placeholder" id="chatContainer" style="height:300px; overflow-y:auto; padding:1rem; background:#f8f9fa; border-radius:.5rem;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <h2 style="margin-bottom:0;"><i class="fas fa-robot"></i> AI 应急决策助手</h2>
+                <button id="toggleChatHistory" class="btn-secondary" style="font-size:.8rem;padding:.35rem .8rem;">
+                    <i class="fas fa-clock-rotate-left"></i> 历史对话
+                </button>
+            </div>
+
+            <!-- 对话历史面板 -->
+            <div id="chatHistoryPanel" style="display:none;margin-top:.8rem;padding:.8rem;background:var(--bg-tertiary);border-radius:10px;max-height:240px;overflow-y:auto;">
+                <div id="chatHistoryList" style="display:flex;flex-direction:column;gap:.4rem;"></div>
+                <div id="chatHistoryEmpty" style="display:none;text-align:center;padding:1rem;color:var(--text-muted);font-size:.85rem;">
+                    <i class="fas fa-inbox"></i> 暂无对话记录
+                </div>
+            </div>
+
+            <div class="chat-placeholder" id="chatContainer" style="height:300px; overflow-y:auto; padding:1rem; background:#f8f9fa; border-radius:.5rem;margin-top:.8rem;">
                 <div class="message bot"><i class="fas fa-robot" style="margin-right:.5rem;"></i> 你好，我是济小震AI助手。地震发生时我应该怎么做？请随时向我提问。</div>
             </div>
             <div class="search-box">
@@ -74,5 +88,87 @@
     <script src="/frontend/assets/js/chat.js"></script>
     <script src="/frontend/assets/js/map.js"></script>
     <script src="/frontend/assets/js/main.js"></script>
+    <script>
+    // ==================== 对话历史面板 ====================
+    (function() {
+        const toggleBtn = document.getElementById('toggleChatHistory');
+        const panel     = document.getElementById('chatHistoryPanel');
+        const listEl    = document.getElementById('chatHistoryList');
+        const emptyEl   = document.getElementById('chatHistoryEmpty');
+
+        let loaded = false;
+
+        toggleBtn.addEventListener('click', async function() {
+            const isOpen = panel.style.display !== 'none';
+            if (isOpen) {
+                panel.style.display = 'none';
+                return;
+            }
+
+            if (!loaded) await loadHistory();
+            panel.style.display = 'block';
+        });
+
+        async function loadHistory() {
+            loaded = true;
+            const User = window.JiXiaoZhen?.User;
+            if (!User) { emptyEl.style.display = 'block'; return; }
+
+            const history = await User.getChatHistory(20);
+            if (!history || history.length === 0) {
+                emptyEl.style.display = 'block';
+                return;
+            }
+
+            listEl.innerHTML = history.map(h => `
+                <div class="chat-history-chip" data-user="${escAttr(h.user_message)}" data-bot="${escAttr(h.ai_reply)}" style="
+                    display:flex;align-items:center;gap:.5rem;padding:.45rem .7rem;
+                    background:var(--bg-secondary);border:1px solid var(--border-subtle);
+                    border-radius:8px;cursor:pointer;transition:all .15s ease;
+                    font-size:.82rem;color:var(--text-secondary);">
+                    <i class="fas fa-comment" style="font-size:.65rem;opacity:.4;flex-shrink:0;"></i>
+                    <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                        ${escHtml(h.user_message.length > 35 ? h.user_message.slice(0,35)+'...' : h.user_message)}
+                    </span>
+                    <span style="font-size:.7rem;color:var(--text-muted);flex-shrink:0;">${timeAgo(h.created_at)}</span>
+                </div>
+            `).join('');
+
+            // 点击加载历史对话到聊天框
+            listEl.querySelectorAll('.chat-history-chip').forEach(chip => {
+                chip.addEventListener('click', function() {
+                    const chatBox = document.getElementById('chatContainer');
+                    chatBox.innerHTML = `
+                        <div class="message user" style="text-align:right;margin-left:auto;background:#3498db;color:#fff;">
+                            <i class="fas fa-user" style="margin-right:.5rem;"></i>${escHtml(this.dataset.user)}
+                        </div>
+                        <div class="message bot" style="background:#fff;border:1px solid #ddd;">
+                            <i class="fas fa-robot" style="margin-right:.5rem;"></i>${escHtml(this.dataset.bot)}
+                        </div>
+                    `;
+                    panel.style.display = 'none';
+                });
+                chip.addEventListener('mouseenter', function() {
+                    this.style.background = 'var(--bg-tertiary)';
+                    this.style.borderColor = 'var(--accent-tertiary)';
+                });
+                chip.addEventListener('mouseleave', function() {
+                    this.style.background = 'var(--bg-secondary)';
+                    this.style.borderColor = 'var(--border-subtle)';
+                });
+            });
+        }
+
+        function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+        function escAttr(s) { return s.replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+        function timeAgo(d) {
+            const diff = Math.floor((Date.now() - new Date(d).getTime()) / 1000);
+            if (diff < 60) return '刚刚';
+            if (diff < 3600) return Math.floor(diff/60)+'分钟前';
+            if (diff < 86400) return Math.floor(diff/3600)+'小时前';
+            return Math.floor(diff/86400)+'天前';
+        }
+    })();
+    </script>
 </body>
 </html>

@@ -386,8 +386,8 @@
                         <span class="category-badge category-${item.category}">${getCategoryName(item.category)}</span>
                     </td>
                     <td>${item.author || '-'}</td>
-                    <td>${item.viewCount || 0}</td>
-                    <td>${formatDate(item.createdAt)}</td>
+                    <td>${item.view_count || 0}</td>
+                    <td>${formatDate(item.created_at)}</td>
                     <td>
                         <div class="btn-group">
                             <button class="btn-secondary btn-sm" onclick="openEditModal(${item.id})">
