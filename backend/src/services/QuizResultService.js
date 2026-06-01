@@ -1,127 +1,121 @@
-const { QuizResult, User, Quiz } = require('../models');
-const { Op } = require('sequelize');
+// 济小震 · 测验结果服务（Supabase）
+const { getSupabaseAdmin } = require('../middleware/auth.middleware');
+
+function getAdmin() {
+  const admin = getSupabaseAdmin();
+  if (!admin) throw new Error('Supabase 未配置');
+  return admin;
+}
 
 class QuizResultService {
   static async createQuizResult(data) {
     const { userId, quizId, score, totalQuestions, correctCount, answers } = data;
-    const accuracy = totalQuestions > 0 ? (correctCount / totalQuestions) * 100 : 0;
-    
-    await User.findOrCreate({
-      where: { id: userId },
-      defaults: {
-        nickname: '用户',
-        score: 0,
-        quizCount: 0,
-        correctCount: 0
-      }
-    });
+    const accuracy = totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 10000) / 100 : 0;
 
-    const result = await QuizResult.create({
-      userId,
-      quizId,
-      score,
-      totalQuestions,
-      correctCount,
-      answers,
-      accuracy: Math.round(accuracy * 100) / 100
-    });
+    const { data: result, error } = await getAdmin()
+      .from('quiz_results')
+      .insert({
+        user_id: userId,
+        quiz_id: quizId,
+        score,
+        total_questions: totalQuestions,
+        correct_count: correctCount || 0,
+        answers: answers || {},
+        accuracy,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .select()
+      .single();
 
-    await User.increment({
-      score: score,
-      quizCount: 1,
-      correctCount: correctCount
-    }, {
-      where: { id: userId }
-    });
-
+    if (error) throw error;
     return result;
   }
 
   static async getQuizResultsByUserId(userId, page = 1, limit = 10) {
-    const offset = (page - 1) * limit;
-    const { count, rows } = await QuizResult.findAndCountAll({
-      where: { userId },
-      include: [
-        {
-          model: Quiz,
-          attributes: ['title', 'category']
-        }
-      ],
-      order: [['createdAt', 'DESC']],
-      limit,
-      offset
-    });
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
 
-    const results = rows.map((row, index) => {
-      const result = row.toJSON();
-      return {
-        ...result,
-        serialNumber: offset + index + 1
-      };
-    });
+    const { count, error: countErr } = await getAdmin()
+      .from('quiz_results')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId);
+
+    if (countErr) throw countErr;
+
+    const { data, error } = await getAdmin()
+      .from('quiz_results')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .range(from, to);
+
+    if (error) throw error;
+
+    const results = (data || []).map((row, index) => ({
+      ...row,
+      serialNumber: from + index + 1
+    }));
 
     return {
-      total: count,
-      pages: Math.ceil(count / limit),
+      total: count || 0,
+      pages: Math.ceil((count || 0) / limit),
       currentPage: page,
       results
     };
   }
 
   static async getQuizResultById(id) {
-    return await QuizResult.findByPk(id, {
-      include: [
-        {
-          model: Quiz,
-          attributes: ['title', 'category']
-        }
-      ]
-    });
+    const { data, error } = await getAdmin()
+      .from('quiz_results')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) throw error;
+    return data;
   }
 
   static async getUserQuizStats(userId) {
-    const stats = await QuizResult.findAll({
-      where: { userId },
-      attributes: [
-        [QuizResult.sequelize.fn('COUNT', QuizResult.sequelize.col('id')), 'totalQuizzes'],
-        [QuizResult.sequelize.fn('SUM', QuizResult.sequelize.col('score')), 'totalScore'],
-        [QuizResult.sequelize.fn('SUM', QuizResult.sequelize.col('correctCount')), 'totalCorrect'],
-        [QuizResult.sequelize.fn('SUM', QuizResult.sequelize.col('totalQuestions')), 'totalQuestions'],
-        [QuizResult.sequelize.fn('AVG', QuizResult.sequelize.col('accuracy')), 'avgAccuracy']
-      ]
-    });
+    const { data, error } = await getAdmin()
+      .from('quiz_results')
+      .select('score, correct_count, total_questions, accuracy')
+      .eq('user_id', userId);
 
-    if (stats.length === 0) {
-      return {
-        totalQuizzes: 0,
-        totalScore: 0,
-        totalCorrect: 0,
-        totalQuestions: 0,
-        avgAccuracy: 0
-      };
+    if (error) throw error;
+
+    if (!data || data.length === 0) {
+      return { totalQuizzes: 0, totalScore: 0, totalCorrect: 0, totalQuestions: 0, avgAccuracy: 0 };
     }
 
-    const stat = stats[0].toJSON();
-    return {
-      totalQuizzes: parseInt(stat.totalQuizzes) || 0,
-      totalScore: parseInt(stat.totalScore) || 0,
-      totalCorrect: parseInt(stat.totalCorrect) || 0,
-      totalQuestions: parseInt(stat.totalQuestions) || 0,
-      avgAccuracy: Math.round((parseFloat(stat.avgAccuracy) || 0) * 100) / 100
-    };
+    const totalQuizzes = data.length;
+    const totalScore = data.reduce((s, r) => s + (r.score || 0), 0);
+    const totalCorrect = data.reduce((s, r) => s + (r.correct_count || 0), 0);
+    const totalQuestions = data.reduce((s, r) => s + (r.total_questions || 0), 0);
+    const avgAccuracy = totalQuizzes > 0
+      ? Math.round(data.reduce((s, r) => s + (r.accuracy || 0), 0) / totalQuizzes * 100) / 100
+      : 0;
+
+    return { totalQuizzes, totalScore, totalCorrect, totalQuestions, avgAccuracy };
   }
 
   static async deleteQuizResult(id, userId) {
-    const result = await QuizResult.findOne({
-      where: { id, userId }
-    });
+    const { data: existing } = await getAdmin()
+      .from('quiz_results')
+      .select('id')
+      .eq('id', id)
+      .eq('user_id', userId)
+      .single();
 
-    if (!result) {
-      return null;
-    }
+    if (!existing) return null;
 
-    await result.destroy();
-    return result;
+    const { error } = await getAdmin()
+      .from('quiz_results')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+    return existing;
   }
 }
 

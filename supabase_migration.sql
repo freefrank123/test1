@@ -1,6 +1,6 @@
 -- ============================================
 -- 济小震 · Supabase 数据库迁移脚本
--- 可安全重复执行：先删除旧策略，再创建
+-- 可安全重复执行
 -- 在 Supabase Dashboard > SQL Editor 中执行
 -- ============================================
 
@@ -91,7 +91,31 @@ DROP POLICY IF EXISTS "Users can insert own chat history" ON public.chat_history
 CREATE POLICY "Users can insert own chat history" ON public.chat_history
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
--- 5. 测试积分表
+-- 5. 知识文章表
+CREATE TABLE IF NOT EXISTS public.knowledge_articles (
+  id BIGSERIAL PRIMARY KEY,
+  title TEXT NOT NULL,
+  category TEXT NOT NULL CHECK (category IN ('def', 'mag', 'firstaid', 'building')),
+  author TEXT,
+  source TEXT,
+  keywords TEXT,
+  summary TEXT,
+  content TEXT,
+  view_count INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_knowledge_category ON public.knowledge_articles(category);
+CREATE INDEX IF NOT EXISTS idx_knowledge_created_at ON public.knowledge_articles(created_at DESC);
+
+ALTER TABLE public.knowledge_articles ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Anyone can read knowledge" ON public.knowledge_articles;
+CREATE POLICY "Anyone can read knowledge" ON public.knowledge_articles
+  FOR SELECT USING (true);
+
+-- 6. 测试积分表
 CREATE TABLE IF NOT EXISTS public.test_scores (
   id BIGSERIAL PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
@@ -113,7 +137,7 @@ DROP POLICY IF EXISTS "Users can insert own scores" ON public.test_scores;
 CREATE POLICY "Users can insert own scores" ON public.test_scores
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
--- 6. 测验结果详情表（与互动测验区联动）
+-- 7. 测验结果详情表
 CREATE TABLE IF NOT EXISTS public.quiz_results (
   id BIGSERIAL PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,

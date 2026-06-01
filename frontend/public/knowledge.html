@@ -268,7 +268,7 @@
                     <h4>${escapeHtml(item.title)}</h4>
                     <p>${escapeHtml(item.summary || item.content || '暂无摘要')}</p>
                     <div class="knowledge-meta">
-                        <span><i class="fas fa-tag"></i> ${escapeHtml(item.category_name || '')}</span>
+                        <span><i class="fas fa-tag"></i> ${escapeHtml(item.category || '')}</span>
                         <span><i class="fas fa-clock"></i> ${item.created_at ? new Date(item.created_at).toLocaleDateString('zh-CN') : ''}</span>
                     </div>
                 </div>
@@ -298,7 +298,7 @@
             detailContent.innerHTML = `
                 <h2 style="color:var(--accent-primary);margin-bottom:1rem;">${escapeHtml(item.title)}</h2>
                 <div class="detail-meta">
-                    <div class="detail-meta-item"><i class="fas fa-tag"></i> ${escapeHtml(item.category_name || '')}</div>
+                    <div class="detail-meta-item"><i class="fas fa-tag"></i> ${escapeHtml(item.category || '')}</div>
                     <div class="detail-meta-item"><i class="fas fa-clock"></i> ${item.created_at ? new Date(item.created_at).toLocaleString('zh-CN') : ''}</div>
                     ${item.author ? `<div class="detail-meta-item"><i class="fas fa-user"></i> ${escapeHtml(item.author)}</div>` : ''}
                 </div>
