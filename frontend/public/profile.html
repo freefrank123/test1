@@ -83,11 +83,11 @@
         </div>
 
         <div style="text-align:center;margin-top:1.5rem;">
+            <a href="admin.html" class="btn-primary" style="text-decoration:none;margin-right:.8rem;">
+                <i class="fas fa-pen-to-square"></i> 知识管理
+            </a>
             <button class="btn-secondary" id="logoutProfileBtn">
                 <i class="fas fa-sign-out-alt"></i> 退出登录
-            </button>
-            <button class="btn-danger" id="deleteAccountBtn" style="margin-left:1rem;">
-                <i class="fas fa-trash"></i> 注销账户
             </button>
         </div>
     </div>
@@ -122,25 +122,6 @@
             window.location.href = 'index.html';
         });
 
-        // 注销账户
-        const deleteBtn = document.getElementById('deleteAccountBtn');
-        deleteBtn.addEventListener('click', async function () {
-            const confirmed = confirm('确定要注销账户吗？\n\n此操作不可撤销，您的所有数据（搜索记录、对话历史、测试积分）将被永久删除。');
-            if (!confirmed) return;
-
-            const secondConfirm = confirm('再次确认：真的要注销账户吗？');
-            if (!secondConfirm) return;
-
-            try {
-                deleteBtn.disabled = true;
-                deleteBtn.innerHTML = '<i class="fas fa-spinner fa-pulse"></i> 注销中...';
-                await User.deleteAccount();
-            } catch (err) {
-                alert('注销失败：' + (err.message || '未知错误'));
-                deleteBtn.disabled = false;
-                deleteBtn.innerHTML = '<i class="fas fa-trash"></i> 注销账户';
-            }
-        });
     });
 
     function renderProfileHeader(user) {
