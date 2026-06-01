@@ -1,5 +1,4 @@
-const { getSupabaseAdmin, getNumericUserId } = require('../middleware/auth.middleware');
-const { QuizResult, User } = require('../models');
+const { getSupabaseAdmin } = require('../middleware/auth.middleware');
 
 function getAdmin() {
   const admin = getSupabaseAdmin();
@@ -7,7 +6,6 @@ function getAdmin() {
   return admin;
 }
 
-// ==================== 个人资料 ====================
 async function getProfile(userId) {
   try {
     const { data, error } = await getAdmin()
@@ -43,7 +41,6 @@ async function updateProfile(userId, updates) {
   }
 }
 
-// ==================== 搜索历史 ====================
 async function addSearchHistory(userId, query, resultCount) {
   try {
     const { error } = await getAdmin()
@@ -75,7 +72,6 @@ async function getSearchHistory(userId, limit = 20) {
   }
 }
 
-// ==================== 对话历史 ====================
 async function addChatHistory(userId, userMessage, aiReply) {
   try {
     const { error } = await getAdmin()
@@ -107,40 +103,26 @@ async function getChatHistory(userId, limit = 50) {
   }
 }
 
-// ==================== 测验分数（从MySQL读取，不依赖Supabase） ====================
 async function addTestScore(userId, score, totalQuestions) {
   try {
-    const numericUserId = getNumericUserId(userId);
-    console.log(`保存测验分数 - 用户ID: ${userId}, 数字ID: ${numericUserId}, 分数: ${score}`);
+    console.log(`保存测验分数 - 用户ID: ${userId}, 分数: ${score}`);
     
-    await User.findOrCreate({
-      where: { id: numericUserId },
-      defaults: {
-        nickname: '用户',
-        score: 0,
-        quizCount: 0,
-        correctCount: 0
-      }
-    });
+    const correctCount = Math.round(score / 10);
+    const accuracy = Math.round((score / (totalQuestions * 10)) * 100);
 
-    const result = await QuizResult.create({
-      userId: numericUserId,
-      quizId: 1,
-      score: score,
-      totalQuestions: totalQuestions,
-      correctCount: Math.round(score / 10),
-      accuracy: Math.round((score / (totalQuestions * 10)) * 100)
-    });
-    
-    await User.increment({
-      score: score,
-      quizCount: 1,
-      correctCount: Math.round(score / 10)
-    }, {
-      where: { id: numericUserId }
-    });
+    const { data: result, error } = await getAdmin()
+      .from('test_scores')
+      .insert({
+        user_id: userId,
+        score: score,
+        total_questions: totalQuestions,
+        completed_at: new Date().toISOString()
+      })
+      .select()
+      .single();
 
-    return result.toJSON();
+    if (error) throw error;
+    return result;
   } catch (error) {
     console.error('保存测验分数失败:', error);
     throw error;
@@ -149,34 +131,31 @@ async function addTestScore(userId, score, totalQuestions) {
 
 async function getTestScores(userId, limit = 50) {
   try {
-    const numericUserId = getNumericUserId(userId);
-    console.log(`获取测验分数 - 用户ID: ${userId}, 数字ID: ${numericUserId}`);
+    console.log(`获取测验分数 - 用户ID: ${userId}`);
     
-    const results = await QuizResult.findAll({
-      where: { userId: numericUserId },
-      order: [['createdAt', 'DESC']],
-      limit: limit
-    });
-    
-    console.log(`找到 ${results.length} 条测验记录`);
-    
-    return results.map(result => {
-      const data = result.toJSON();
-      return {
-        id: data.id,
-        user_id: userId,
-        score: data.score,
-        total_questions: data.totalQuestions,
-        completed_at: data.createdAt
-      };
-    });
+    const { data, error } = await getAdmin()
+      .from('test_scores')
+      .select('*')
+      .eq('user_id', userId)
+      .order('completed_at', { ascending: false })
+      .limit(limit);
+
+    if (error) throw error;
+    console.log(`找到 ${data.length} 条测验记录`);
+
+    return data.map(item => ({
+      id: item.id,
+      user_id: item.user_id,
+      score: item.score,
+      total_questions: item.total_questions,
+      completed_at: item.completed_at
+    }));
   } catch (error) {
     console.error('获取测验分数失败:', error);
     throw error;
   }
 }
 
-// ==================== 删除账户 ====================
 async function deleteAccount(userId) {
   try {
     const { error } = await getAdmin().auth.admin.deleteUser(userId);

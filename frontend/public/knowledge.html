@@ -186,7 +186,7 @@
     <script src="/frontend/assets/js/dt.js"></script>
     <script src="/frontend/assets/js/main.js"></script>
     <script>
-    // ==================== 知识中心交互逻辑（队友扩展） ====================
+    // ==================== 知识中心交互逻辑 ====================
     (function() {
         const searchInput = document.getElementById('searchInput');
         const searchBtn = document.getElementById('searchBtn');
@@ -197,6 +197,35 @@
         const detailContent = document.getElementById('detailContent');
         const backBtn = document.getElementById('backBtn');
         const backToListBtn = document.getElementById('backToListBtn');
+
+        // 页面加载时检查 URL 参数
+        document.addEventListener('DOMContentLoaded', function() {
+            const params = new URLSearchParams(window.location.search);
+            const articleId = params.get('id');
+            if (articleId) {
+                loadArticleDetail(parseInt(articleId));
+            }
+        });
+
+        // 加载文章详情
+        async function loadArticleDetail(id) {
+            categoryList.style.display = 'none';
+            knowledgeList.style.display = 'none';
+            knowledgeDetail.style.display = 'block';
+            detailContent.innerHTML = '<p style="color:var(--text-muted);"><i class="fas fa-spinner fa-pulse"></i> 加载详情...</p>';
+
+            try {
+                const resp = await fetch(`http://localhost:5000/api/knowledge/${id}`);
+                const data = await resp.json();
+                if (data.success && data.data) {
+                    renderDetail(data.data);
+                } else {
+                    detailContent.innerHTML = '<p style="color:#ef4444;">文章不存在</p>';
+                }
+            } catch (err) {
+                detailContent.innerHTML = '<p style="color:#ef4444;">加载失败</p>';
+            }
+        }
 
         // 搜索
         if (searchBtn) {

@@ -14,13 +14,6 @@ function getSupabaseAdmin() {
   return supabaseAdmin;
 }
 
-function getNumericUserId(uuid) {
-  if (!uuid) return 1;
-  const hash = uuid.split('-').join('');
-  const num = parseInt(hash.slice(0, 8), 16);
-  return num % 1000000 + 1;
-}
-
 async function authMiddleware(req, res, next) {
   const admin = getSupabaseAdmin();
   if (!admin) {
@@ -54,4 +47,4 @@ async function authMiddleware(req, res, next) {
   }
 }
 
-module.exports = { authMiddleware, getSupabaseAdmin, getNumericUserId };
+module.exports = { authMiddleware, getSupabaseAdmin };
