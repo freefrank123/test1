@@ -216,6 +216,26 @@
             </div>
         </div>
 
+        <!-- 地震波选择 -->
+        <div class="card" id="waveSelectCard">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">
+                <div style="display:flex;align-items:center;gap:.6rem;">
+                    <h2 style="margin:0;"><i class="fas fa-wave-square"></i> 输入地震动</h2>
+                </div>
+                <div style="display:flex;gap:.5rem;">
+                    <button class="wave-btn active" data-wave="synthetic" id="waveSynth">
+                        <i class="fas fa-dice"></i> 人工合成波
+                    </button>
+                    <button class="wave-btn" data-wave="kobe" id="waveKobe">
+                        <i class="fas fa-database"></i> Kobe 1995
+                    </button>
+                </div>
+            </div>
+            <div id="waveInfo" style="margin-top:.6rem;font-size:.82rem;color:var(--text-muted);">
+                基于震级和场地特征随机合成的加速度时程
+            </div>
+        </div>
+
         <!-- 震级选择 -->
         <div class="card" id="magnitudeCard">
             <h2><i class="fas fa-sliders"></i> 震级选择</h2>
@@ -305,6 +325,8 @@
     <script type="module">
     import * as THREE from 'three';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 
     // ==================== 3D 建筑结构查看器 ====================
     const container = document.getElementById('viewer3dContainer');
@@ -564,8 +586,40 @@
         return g;
     }
 
+    // --- Draco 解压 (用于压缩 GLB) ---
+    const dracoLoader = new DRACOLoader();
+    dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/draco/');
+
+    const gltfLoader = new GLTFLoader();
+    gltfLoader.setDRACOLoader(dracoLoader);
+
+    // 预加载钢框架 GLB 模型
+    let steelGLBModel = null;
+    let steelLoadError = false;
+    gltfLoader.load('/frontend/assets/data/steel-frame.glb',
+        (gltf) => { steelGLBModel = gltf.scene; console.log('🏗 钢框架 GLB 模型已加载'); },
+        (p) => { if (p.total) { const pct = Math.round(p.loaded / p.total * 100); if (pct % 25 === 0) console.log('📦 钢框架加载中...', pct + '%'); } },
+        (err) => { steelLoadError = true; console.warn('⚠ 钢框架 GLB 加载失败，使用程序化模型:', err); }
+    );
+
+    function createSteelFromGLB() {
+        const g = new THREE.Group();
+        if (steelGLBModel) {
+            const clone = steelGLBModel.clone();
+            // 自动缩放适配场景
+            clone.scale.set(0.3, 0.3, 0.3);
+            clone.position.y = 0.5;
+            clone.traverse(node => { if (node.isMesh) { node.castShadow = true; node.receiveShadow = true; } });
+            g.add(clone);
+        } else {
+            // 回退：还没加载完就用旧的程序化模型
+            return createSteelFrame();
+        }
+        return g;
+    }
+
     // ==================== 切换模型 ====================
-    const builders = { masonry: createMasonry, rcframe: createRCFrame, steel: createSteelFrame, shearwall: createShearWall };
+    const builders = { masonry: createMasonry, rcframe: createRCFrame, steel: createSteelFromGLB, shearwall: createShearWall };
 
     function switchModel(type) {
         if (currentModel === type && modelGroup) return;
@@ -574,9 +628,15 @@
         modelGroup = builders[type]();
         scene.add(modelGroup);
 
-        // 根据建筑类型调整相机距离
-        const heights = { masonry: 4.5, rcframe: 7, steel: 10, shearwall: 6 };
+        // 根据建筑类型调整相机视角
+        const heights = { masonry: 4.5, rcframe: 7, steel: 5, shearwall: 6 };
         controls.target.set(0, heights[type] / 2, 0);
+        // GLB 模型实际尺寸不同，相机放近一点
+        const dists = { steel: 6 };
+        if (dists[type]) {
+            const dir = camera.position.clone().sub(controls.target).normalize();
+            camera.position.copy(controls.target.clone().add(dir.multiplyScalar(dists[type])));
+        }
         controls.update();
     }
 

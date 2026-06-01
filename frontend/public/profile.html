@@ -192,8 +192,8 @@
         list.innerHTML = scores.map(s => `
             <div class="score-item">
                 <div class="score-info">
-                    <span class="score-value">${s.score} / ${s.total_questions}</span>
-                    <span class="score-percent">${Math.round(s.score / s.total_questions * 100)}%</span>
+                    <span class="score-value">${s.score} / ${s.total_questions * 10}</span>
+                    <span class="score-percent">${Math.round(s.score / (s.total_questions * 10) * 100)}%</span>
                 </div>
                 <span class="score-date">${new Date(s.completed_at).toLocaleString('zh-CN')}</span>
             </div>

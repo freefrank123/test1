@@ -6,22 +6,22 @@ const userController = require('../controllers/user.controller');
 const router = Router();
 
 // 个人资料
-router.get('/user/profile', authMiddleware, userController.getProfile);
-router.put('/user/profile', authMiddleware, userController.updateProfile);
+router.get('/profile', authMiddleware, userController.getProfile);
+router.put('/profile', authMiddleware, userController.updateProfile);
 
 // 地震搜索历史
-router.post('/user/search-history', authMiddleware, userController.addSearchHistory);
-router.get('/user/search-history', authMiddleware, userController.getSearchHistory);
+router.post('/search-history', authMiddleware, userController.addSearchHistory);
+router.get('/search-history', authMiddleware, userController.getSearchHistory);
 
 // AI 对话历史
-router.post('/user/chat-history', authMiddleware, userController.addChatHistory);
-router.get('/user/chat-history', authMiddleware, userController.getChatHistory);
+router.post('/chat-history', authMiddleware, userController.addChatHistory);
+router.get('/chat-history', authMiddleware, userController.getChatHistory);
 
 // 测试积分
-router.post('/user/scores', authMiddleware, userController.addTestScore);
-router.get('/user/scores', authMiddleware, userController.getTestScores);
+router.post('/scores', authMiddleware, userController.addTestScore);
+router.get('/scores', authMiddleware, userController.getTestScores);
 
 // 注销账户
-router.delete('/user/account', authMiddleware, userController.deleteAccount);
+router.delete('/account', authMiddleware, userController.deleteAccount);
 
 module.exports = router;
