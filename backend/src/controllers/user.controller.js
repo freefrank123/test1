@@ -107,10 +107,18 @@ async function addTestScore(req, res) {
   try {
     const { score, totalQuestions } = req.body;
     const data = await userService.addTestScore(req.user.id, score, totalQuestions);
-    res.json({
-      success: true,
-      data
-    });
+    
+    if (data === null) {
+      res.json({
+        success: false,
+        message: '重复提交，已跳过'
+      });
+    } else {
+      res.json({
+        success: true,
+        data
+      });
+    }
   } catch (err) {
     console.error('保存测试积分失败:', err);
     res.status(500).json({
@@ -133,6 +141,54 @@ async function getTestScores(req, res) {
     res.status(500).json({
       success: false,
       message: '获取测试积分失败'
+    });
+  }
+}
+
+async function deleteAllTestScores(req, res) {
+  try {
+    const count = await userService.deleteAllTestScores(req.user.id);
+    res.json({
+      success: true,
+      message: `已删除 ${count} 条测试积分记录`
+    });
+  } catch (err) {
+    console.error('删除测试积分失败:', err);
+    res.status(500).json({
+      success: false,
+      message: '删除测试积分失败'
+    });
+  }
+}
+
+async function clearAllTestScores(req, res) {
+  try {
+    const count = await userService.clearAllTestScores();
+    res.json({
+      success: true,
+      message: `已清除所有用户的 ${count} 条测试积分记录`
+    });
+  } catch (err) {
+    console.error('清除测试积分失败:', err);
+    res.status(500).json({
+      success: false,
+      message: '清除测试积分失败'
+    });
+  }
+}
+
+async function getAllTestScores(req, res) {
+  try {
+    const data = await userService.getAllTestScores();
+    res.json({
+      success: true,
+      data
+    });
+  } catch (err) {
+    console.error('获取所有测试积分失败:', err);
+    res.status(500).json({
+      success: false,
+      message: '获取所有测试积分失败'
     });
   }
 }
@@ -161,5 +217,8 @@ module.exports = {
   addChatHistory,
   getChatHistory,
   addTestScore,
-  getTestScores
+  getTestScores,
+  deleteAllTestScores,
+  clearAllTestScores,
+  getAllTestScores
 };

@@ -104,17 +104,29 @@
 
   // ==================== 测试积分 ====================
 
+  let hasSavedScore = false;
+
   async function saveTestScore(score, totalQuestions) {
+    if (hasSavedScore) {
+      console.log('⚠️ 测试积分已保存，跳过重复保存');
+      return null;
+    }
+    
     try {
       const data = await authFetch(`${BASE}/user/scores`, {
         method: 'POST',
         body: JSON.stringify({ score, totalQuestions })
       });
+      hasSavedScore = true;
       return data.data || null;
     } catch (err) {
       console.error('保存测试积分失败:', err);
       return null;
     }
+  }
+
+  function resetScoreSavedFlag() {
+    hasSavedScore = false;
   }
 
   async function getTestScores(limit = 50) {
@@ -138,6 +150,7 @@
     saveChatHistory,
     getChatHistory,
     saveTestScore,
-    getTestScores
+    getTestScores,
+    resetScoreSavedFlag
   };
 })();

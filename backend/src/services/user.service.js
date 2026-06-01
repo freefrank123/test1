@@ -103,13 +103,21 @@ async function getChatHistory(userId, limit = 50) {
   }
 }
 
+const recentScores = new Map();
+
 async function addTestScore(userId, score, totalQuestions) {
   try {
+    const now = Date.now();
+    const key = `${userId}:${score}`;
+    const lastSaved = recentScores.get(key);
+    
+    if (lastSaved && (now - lastSaved) < 30000) {
+      console.log(`⚠️ 跳过重复保存 - 用户ID: ${userId}, 分数: ${score}`);
+      return null;
+    }
+    
     console.log(`保存测验分数 - 用户ID: ${userId}, 分数: ${score}`);
     
-    const correctCount = Math.round(score / 10);
-    const accuracy = Math.round((score / (totalQuestions * 10)) * 100);
-
     const { data: result, error } = await getAdmin()
       .from('test_scores')
       .insert({
@@ -122,6 +130,10 @@ async function addTestScore(userId, score, totalQuestions) {
       .single();
 
     if (error) throw error;
+    
+    recentScores.set(key, now);
+    setTimeout(() => recentScores.delete(key), 30000);
+    
     return result;
   } catch (error) {
     console.error('保存测验分数失败:', error);
@@ -156,6 +168,65 @@ async function getTestScores(userId, limit = 50) {
   }
 }
 
+async function deleteAllTestScores(userId) {
+  try {
+    console.log(`删除所有测验分数 - 用户ID: ${userId}`);
+    
+    const { count, error } = await getAdmin()
+      .from('test_scores')
+      .delete()
+      .eq('user_id', userId)
+      .select('*', { count: 'exact', head: true });
+
+    if (error) throw error;
+    console.log(`已删除 ${count} 条测验记录`);
+    
+    return count;
+  } catch (error) {
+    console.error('删除测验分数失败:', error);
+    throw error;
+  }
+}
+
+async function clearAllTestScores() {
+  try {
+    console.log('清除所有用户的测验分数');
+    
+    const { count, error } = await getAdmin()
+      .from('test_scores')
+      .delete()
+      .neq('id', 0)
+      .select('*', { count: 'exact', head: true });
+
+    if (error) throw error;
+    console.log(`已清除 ${count} 条测验记录`);
+    
+    return count;
+  } catch (error) {
+    console.error('清除测验分数失败:', error);
+    throw error;
+  }
+}
+
+async function getAllTestScores() {
+  try {
+    console.log('获取所有用户的测验分数');
+    
+    const { data, error } = await getAdmin()
+      .from('test_scores')
+      .select('*')
+      .order('completed_at', { ascending: false });
+
+    if (error) throw error;
+    console.log(`找到 ${data.length} 条测验记录`);
+    
+    return data;
+  } catch (error) {
+    console.error('获取所有测验分数失败:', error);
+    throw error;
+  }
+}
+
 async function deleteAccount(userId) {
   try {
     const { error } = await getAdmin().auth.admin.deleteUser(userId);
@@ -175,5 +246,8 @@ module.exports = {
   addChatHistory,
   getChatHistory,
   addTestScore,
-  getTestScores
+  getTestScores,
+  deleteAllTestScores,
+  clearAllTestScores,
+  getAllTestScores
 };

@@ -34,8 +34,8 @@ class QuizModule {
       try {
         const session = await auth.getSession();
         if (session?.user?.id) {
-          this.userId = this.convertUUIDToNumeric(session.user.id);
-          localStorage.setItem('userId', this.userId.toString());
+          this.userId = session.user.id;
+          localStorage.setItem('userId', this.userId);
           console.log('✓ 从Supabase获取用户ID:', this.userId);
           return;
         }
@@ -46,20 +46,13 @@ class QuizModule {
     
     const storedUserId = localStorage.getItem('userId');
     if (storedUserId) {
-      this.userId = parseInt(storedUserId);
+      this.userId = storedUserId;
       console.log('✓ 从本地存储获取用户ID:', this.userId);
       return;
     }
     
-    console.warn('⚠️ 未找到用户ID，使用默认值1');
-    this.userId = 1;
-  }
-  
-  convertUUIDToNumeric(uuid) {
-    if (!uuid) return 1;
-    const hash = uuid.split('-').join('');
-    const num = parseInt(hash.slice(0, 8), 16);
-    return num % 1000000 + 1;
+    console.warn('⚠️ 未找到用户ID');
+    this.userId = null;
   }
   
   async loadQuestions() {
@@ -100,6 +93,12 @@ class QuizModule {
     this.current = 0;
     this.score = 0;
     this.hasCompleted = false;
+    this.hasSavedResult = false;
+    
+    if (window.JiXiaoZhen?.User?.resetScoreSavedFlag) {
+      window.JiXiaoZhen.User.resetScoreSavedFlag();
+    }
+    
     if (this.startBtn) {
       this.startBtn.style.display = 'none';
     }
@@ -122,15 +121,41 @@ class QuizModule {
     this.optionsElement.innerHTML = q.options.map((opt, i) =>
       `<button onclick="window.JiXiaoZhen.Quiz.chooseAnswer(${i})" class="btn-secondary" style="margin-right:.5rem; margin-bottom:.5rem;">${opt}</button>`
     ).join('');
+    
     if (this.scoreElement) {
       this.scoreElement.innerText = this.score * 10;
     }
+    
+    const scoreContainer = this.scoreElement?.parentElement || document.querySelector('#quiz-content');
+    const existingExitBtn = document.getElementById('exitQuizBtn');
+    if (existingExitBtn) {
+      existingExitBtn.remove();
+    }
+    
+    const exitButton = document.createElement('button');
+    exitButton.id = 'exitQuizBtn';
+    exitButton.className = 'btn-secondary';
+    exitButton.innerHTML = '<i class="fas fa-sign-out-alt"></i> 退出测验';
+    exitButton.style.cssText = 'display: block; margin-top: 1rem; margin-bottom: 1rem; background: #6b7280; border-color: #6b7280;';
+    exitButton.onclick = () => this.exitQuiz();
+    
+    if (this.scoreElement) {
+      this.scoreElement.parentElement.appendChild(exitButton);
+    } else if (scoreContainer) {
+      scoreContainer.appendChild(exitButton);
+    }
+    
     if (this.resultElement) {
       this.resultElement.innerHTML = '';
     }
   }
   
   async saveQuizResult(totalScore, correctCount, totalCount) {
+    if (this.hasSavedResult) {
+      console.log('⚠️ 测验结果已保存，跳过重复保存');
+      return;
+    }
+    
     try {
       console.log(`保存测验结果 - 用户ID: ${this.userId}, 分数: ${totalScore}, 题目数: ${totalCount}`);
       const response = await fetch(`${this.apiBaseUrl}/quiz-results`, {
@@ -154,6 +179,7 @@ class QuizModule {
       
       const result = await response.json();
       if (result.success) {
+        this.hasSavedResult = true;
         console.log('✓ 测验结果保存成功');
         if (window.JiXiaoZhen?.User?.saveTestScore) {
           window.JiXiaoZhen.User.saveTestScore(totalScore, totalCount);
@@ -286,12 +312,19 @@ class QuizModule {
   
   exitQuiz() {
     this.closeModal();
+    
+    const existingExitBtn = document.getElementById('exitQuizBtn');
+    if (existingExitBtn) {
+      existingExitBtn.remove();
+    }
+    
     if (this.startBtn) {
       this.startBtn.style.display = 'block';
     }
     this.current = 0;
     this.score = 0;
     this.hasCompleted = false;
+    this.hasSavedResult = false;
     if (this.titleElement) {
       this.titleElement.innerText = '地震知识测验';
     }

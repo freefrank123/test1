@@ -41,7 +41,7 @@ class QuizResultController {
       const { page = 1, limit = 10 } = req.query;
 
       const results = await QuizResultService.getQuizResultsByUserId(
-        parseInt(userId),
+        userId,
         parseInt(page),
         parseInt(limit)
       );
@@ -91,7 +91,7 @@ class QuizResultController {
     try {
       const { userId } = req.params;
 
-      const stats = await QuizResultService.getUserQuizStats(parseInt(userId));
+      const stats = await QuizResultService.getUserQuizStats(userId);
 
       res.status(200).json({
         success: true,
@@ -112,7 +112,7 @@ class QuizResultController {
       const { id } = req.params;
       const { userId } = req.body;
 
-      const result = await QuizResultService.deleteQuizResult(parseInt(id), parseInt(userId));
+      const result = await QuizResultService.deleteQuizResult(parseInt(id), userId);
 
       if (!result) {
         return res.status(404).json({

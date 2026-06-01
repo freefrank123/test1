@@ -65,6 +65,10 @@ class QuizResultService {
     };
   }
 
+  static async getQuizResultsByUserIdInt(userId, page = 1, limit = 10) {
+    return this.getQuizResultsByUserId(userId, page, limit);
+  }
+
   static async getQuizResultById(id) {
     const { data, error } = await getAdmin()
       .from('quiz_results')
