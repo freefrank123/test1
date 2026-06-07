@@ -123,9 +123,19 @@
 
         <div class="card">
             <h2><i class="fas fa-search"></i> 知识中枢 · 智能搜索</h2>
-            <div class="search-box">
-                <input type="text" id="searchInput" placeholder="输入关键词：地震成因、震级分类、避震技巧、急救措施...">
+            <div class="search-box" style="position:relative;">
+                <input type="text" id="searchInput" placeholder="输入关键词：地震成因、震级分类、避震技巧、急救措施..." autocomplete="off"
+                       onfocus="toggleSearchHistory(true)" onblur="setTimeout(()=>toggleSearchHistory(false),200)">
                 <button id="searchBtn" class="btn-primary"><i class="fas fa-search"></i> 检索</button>
+                <!-- 搜索历史下拉 -->
+                <div id="searchHistoryDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;
+                    background:var(--bg-secondary);border:1px solid var(--border-subtle);border-radius:10px;
+                    box-shadow:var(--shadow-lg);z-index:100;margin-top:.3rem;max-height:220px;overflow-y:auto;">
+                    <div id="searchHistoryList" style="padding:.4rem 0;"></div>
+                    <div id="searchHistoryEmpty" style="display:none;padding:1rem;text-align:center;color:var(--text-muted);font-size:.82rem;">
+                        <i class="fas fa-inbox"></i> 暂无搜索记录
+                    </div>
+                </div>
             </div>
 
             <!-- 四大分类卡片 — 点击跳转子页面 -->
@@ -248,8 +258,76 @@
                 } catch (err) {
                     listContent.innerHTML = '<p style="color:#ef4444;">搜索失败：' + err.message + '</p>';
                 }
+
+                // 保存搜索历史
+                if (keyword) saveKnowledgeSearch(keyword);
             });
         }
+
+        // ---------- 搜索历史 ----------
+        let searchHistoryLoaded = false;
+
+        window.toggleSearchHistory = function(show) {
+            const dropdown = document.getElementById('searchHistoryDropdown');
+            if (!dropdown) return;
+            if (show) {
+                if (!searchHistoryLoaded) loadSearchHistory();
+                dropdown.style.display = 'block';
+            } else {
+                dropdown.style.display = 'none';
+            }
+        };
+
+        async function loadSearchHistory() {
+            searchHistoryLoaded = true;
+            const listEl = document.getElementById('searchHistoryList');
+            const emptyEl = document.getElementById('searchHistoryEmpty');
+            const User = window.JiXiaoZhen?.User;
+            if (!User) { emptyEl.style.display = 'block'; return; }
+
+            const history = await User.getSearchHistory(10);
+            const knowledgeSearches = (history || []).filter(h => {
+                const q = h.query || {};
+                return q.type === 'knowledge';
+            });
+
+            if (knowledgeSearches.length === 0) {
+                emptyEl.style.display = 'block';
+                return;
+            }
+
+            listEl.innerHTML = knowledgeSearches.map(h => {
+                const kw = (h.query || {}).keyword || '';
+                return `<div class="search-history-chip" data-kw="${escAttr(kw)}" style="
+                    padding:.5rem 1rem;cursor:pointer;display:flex;align-items:center;gap:.5rem;
+                    font-size:.82rem;color:var(--text-secondary);transition:all .15s ease;">
+                    <i class="fas fa-search" style="opacity:.4;font-size:.65rem;"></i>
+                    <span style="flex:1;">${escHtml(kw)}</span>
+                    <span style="font-size:.7rem;color:var(--text-muted);">${timeAgo(h.searched_at)}</span>
+                </div>`;
+            }).join('');
+
+            listEl.querySelectorAll('.search-history-chip').forEach(chip => {
+                chip.addEventListener('mousedown', function(e) {
+                    e.preventDefault();
+                    const kw = this.dataset.kw;
+                    searchInput.value = kw;
+                    document.getElementById('searchHistoryDropdown').style.display = 'none';
+                    searchBtn.click();
+                });
+                chip.addEventListener('mouseenter', function() { this.style.background = 'var(--bg-tertiary)'; });
+                chip.addEventListener('mouseleave', function() { this.style.background = 'transparent'; });
+            });
+        }
+
+        async function saveKnowledgeSearch(keyword) {
+            const User = window.JiXiaoZhen?.User;
+            if (!User) return;
+            await User.saveSearchHistory({ type: 'knowledge', keyword }, 0);
+        }
+
+        function escAttr(s) { return s.replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+        function timeAgo(d) { const diff = Math.floor((Date.now()-new Date(d).getTime())/1000); return diff<60?'刚刚':diff<3600?Math.floor(diff/60)+'分钟前':diff<86400?Math.floor(diff/3600)+'小时前':Math.floor(diff/86400)+'天前'; }
 
         // 分类卡片点击（动态加载模式 — 队友扩展用）
         document.querySelectorAll('.knowledge-category').forEach(card => {

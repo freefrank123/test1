@@ -297,6 +297,23 @@ class EarthquakeSimulator {
     else              { tag.textContent = '巨震'; tag.style.background = '#991b1b'; }
   }
 
+  // ---------- Toast 通知 ----------
+  showToast(msg, type) {
+    const toast = document.createElement('div');
+    toast.className = 'sim-toast';
+    const colors = { warning: '#f59e0b', success: '#10b981', error: '#ef4444' };
+    const icons = { warning: 'fa-exclamation-circle', success: 'fa-check-circle', error: 'fa-times-circle' };
+    toast.innerHTML = `<i class="fas ${icons[type] || icons.warning}" style="margin-right:.4rem;"></i>${msg}`;
+    toast.style.cssText = `
+      position:fixed;top:1.5rem;left:50%;transform:translateX(-50%);z-index:999;
+      padding:.65rem 1.4rem;border-radius:10px;color:#fff;font-weight:600;font-size:.88rem;
+      background:${colors[type] || colors.warning};box-shadow:0 4px 16px rgba(0,0,0,.3);
+      animation:toastIn .3s ease,toastOut .3s ease 2s forwards;
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 2500);
+  }
+
   // ---------- 地震波选择 ----------
   async loadKobeData() {
     try {
@@ -343,7 +360,7 @@ class EarthquakeSimulator {
   startSimulation() {
     if (this.isSimulating) return;
     if (!this.selectedType) {
-      alert('请先选择一种建筑结构类型！');
+      this.showToast('请先选择一种建筑结构类型', 'warning');
       return;
     }
 
@@ -1115,79 +1132,41 @@ if (!document.getElementById('eqsim-styles')) {
       background: var(--bg-tertiary);
       border: 2px solid var(--border-subtle);
       border-radius: 14px;
-      padding: 1.5rem 1rem;
+      padding: 1.2rem .8rem;
       text-align: center;
       cursor: pointer;
       transition: all 0.3s cubic-bezier(.4,0,.2,1);
       position: relative;
     }
     .building-card:hover {
-      transform: translateY(-6px);
+      transform: translateY(-4px);
       box-shadow: var(--shadow-lg);
       border-color: var(--accent-tertiary);
     }
     .building-card.selected {
-      border-color: var(--accent-primary);
-      background: var(--accent-glow);
-      box-shadow: 0 0 24px var(--accent-glow);
+      border-color: var(--accent-primary) !important;
+      background: linear-gradient(135deg, var(--accent-glow), var(--bg-tertiary));
+      box-shadow: 0 0 20px var(--accent-glow), inset 0 0 0 1px var(--accent-primary);
+      transform: translateY(-2px);
     }
-    .building-card.selected::before {
+    .building-card.selected::after {
       content: '✓';
       position: absolute;
-      top: 10px;
-      right: 14px;
-      font-size: 1.2rem;
+      top: 8px;
+      right: 12px;
+      font-size: 1rem;
       font-weight: bold;
-      color: var(--accent-primary);
-    }
-    .bc-icon {
-      width: 90px;
-      height: 90px;
-      margin: 0 auto 0.6rem;
+      color: #fff;
+      background: var(--accent-primary);
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
     }
-    .bldg-svg {
-      width: 82px;
-      height: 82px;
-      display: block;
-    }
-    /* 暗色模式下 SVG 中的白色窗格调暗 */
-    [data-theme="dark"] .bldg-svg rect[fill="#fff"] {
-      fill: #d0d8e0;
-    }
-    .building-card h3 {
-      font-size: 1.15rem;
-      color: var(--text-primary);
-      margin-bottom: 0.2rem;
-    }
-    .bc-eng {
-      font-size: 0.85rem;
-      color: var(--text-muted);
-      margin-bottom: 0.6rem;
-    }
-    .bc-params {
-      display: flex;
-      gap: 0.5rem;
-      justify-content: center;
-      flex-wrap: wrap;
-      margin-bottom: 0.5rem;
-    }
-    .bc-params span {
-      background: var(--bg-secondary);
-      color: var(--accent-primary);
-      padding: 3px 8px;
-      border-radius: 6px;
-      font-size: 0.78rem;
-      font-weight: 600;
-      border: 1px solid var(--border-subtle);
-    }
-    .bc-desc {
-      font-size: 0.85rem;
-      color: var(--text-secondary);
-      margin-bottom: 0.3rem;
-    }
+    @keyframes toastIn { from { opacity:0; transform:translateX(-50%) translateY(-20px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }
+    @keyframes toastOut { from { opacity:1; } to { opacity:0; transform:translateX(-50%) translateY(-10px); } }
     .bc-code {
       font-size: 0.75rem;
       color: var(--text-muted);
