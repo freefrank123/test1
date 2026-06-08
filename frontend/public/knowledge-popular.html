@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>大众科普 · 地震互动画册 - 济小震</title>
+    <link rel="stylesheet" href="/frontend/assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .ebook-container { max-width: 900px; margin: 0 auto; padding: 1.5rem 1rem; }
+        .chapter { border: 1px solid var(--border-subtle); border-radius: 16px; margin-bottom: 1rem; overflow: hidden; background: var(--bg-secondary); transition: all .3s ease; }
+        .chapter:hover { box-shadow: var(--shadow-md); }
+        .ch-header { display: flex; align-items: center; gap: 12px; padding: 14px 20px; cursor: pointer; user-select: none; }
+        .ch-tag { font-size: 11px; font-weight: 600; padding: 4px 12px; border-radius: 20px; white-space: nowrap; }
+        .ch-title { font-size: 1.05rem; font-weight: 600; color: var(--text-primary); flex: 1; }
+        .ch-sub { font-size: .8rem; color: var(--text-muted); display: none; }
+        .ch-arrow { font-size: 1rem; color: var(--text-muted); transition: transform .25s ease; }
+        .ch-body { display: none; border-top: 1px solid var(--border-subtle); padding: 16px 20px; background: var(--bg-primary); }
+        .ch-body.open { display: block; }
+        .ch-arrow.open { transform: rotate(90deg); }
+        .nodes { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 14px; }
+        .node-card { border: 1px solid var(--border-subtle); border-radius: 12px; padding: 14px 16px; background: var(--bg-tertiary); transition: transform .2s ease; }
+        .node-card:hover { transform: translateY(-2px); }
+        .node-icon { font-size: 1.4rem; margin-bottom: 8px; display: block; }
+        .node-title { font-size: .95rem; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; }
+        .node-desc { font-size: .82rem; color: var(--text-secondary); line-height: 1.6; }
+        .interact-box { display: flex; align-items: flex-start; gap: 10px; padding: 12px 16px; border-radius: 12px; margin-top: 8px; font-size: .82rem; color: var(--text-primary); line-height: 1.6; border: 1px solid; }
+        .interact-label { font-weight: 700; white-space: nowrap; font-size: .78rem; }
+
+        /* Chapter colors */
+        .c1 .ch-tag { background: #E6F1FB; color: #185FA5; }
+        .c1 .interact-box { background: #F5F9FD; border-color: #B5D4F4; }
+        .c2 .ch-tag { background: #FAECE7; color: #993C1D; }
+        .c2 .interact-box { background: #FDF8F5; border-color: #F5C4B3; }
+        .c3 .ch-tag { background: #EAF3DE; color: #3B6D11; }
+        .c3 .interact-box { background: #F7FAF2; border-color: #C0DD97; }
+        .c4 .ch-tag { background: #EEEDFE; color: #534AB7; }
+        .c4 .interact-box { background: #F8F7FD; border-color: #CECBF6; }
+        .c5 .ch-tag { background: #FAEEDA; color: #854F0B; }
+        .c5 .interact-box { background: #FDF9F2; border-color: #FAC775; }
+
+        /* Shake simulator */
+        .shake-demo { text-align: center; padding: 20px; }
+        .shake-target { display: inline-block; padding: 30px 40px; background: var(--bg-tertiary); border-radius: 16px; border: 2px solid var(--border-subtle); transition: transform .05s; font-size: 3rem; }
+        .shake-slider { width: 100%; max-width: 300px; margin: 1rem auto 0; }
+
+        /* 12-second game */
+        .game-scene { background: var(--bg-tertiary); border-radius: 14px; padding: 20px; text-align: center; }
+        .game-room { position: relative; width: 100%; max-width: 500px; height: 300px; margin: 0 auto; background: #f5f0e8; border-radius: 12px; border: 2px solid #d4c5b2; overflow: hidden; }
+        .game-room .furniture { position: absolute; border-radius: 6px; cursor: pointer; transition: all .2s ease; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; }
+        .game-room .furniture:hover { outline: 3px solid #22c55e; outline-offset: 2px; }
+        .game-room .furniture.wrong:hover { outline-color: #ef4444; }
+        .game-timer { font-size: 3rem; font-weight: 900; color: #ef4444; margin: 10px 0; }
+        .game-feedback { min-height: 3rem; font-weight: 600; margin-top: 8px; }
+
+        /* Timeline */
+        .timeline { position: relative; padding-left: 24px; border-left: 3px solid var(--border-subtle); }
+        .timeline-item { margin-bottom: 1rem; position: relative; }
+        .timeline-item::before { content: ''; position: absolute; left: -32px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background: var(--accent-primary); border: 3px solid var(--bg-secondary); }
+
+        @media (min-width: 640px) { .ch-sub { display: inline; } }
+        @media (max-width: 480px) { .nodes { grid-template-columns: 1fr; } }
+
+        /* 详情弹窗 */
+        .detail-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55); backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center; padding: 1rem; }
+        .detail-overlay.show { display: flex; }
+        .detail-card { background: var(--bg-secondary); border-radius: 18px; max-width: 700px; width: 100%; max-height: 85vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+        .detail-card-header { padding: 1.5rem 1.8rem 0; display: flex; justify-content: space-between; align-items: flex-start; }
+        .detail-card-header h2 { margin: 0; font-size: 1.3rem; }
+        .detail-close { background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--text-muted); padding: .3rem; border-radius: 8px; }
+        .detail-close:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+        .detail-body { padding: 1rem 1.8rem 1.8rem; line-height: 1.8; color: var(--text-primary); font-size: .9rem; }
+        .detail-body h3 { color: var(--accent-primary); margin: 1.2rem 0 .6rem; font-size: 1.05rem; }
+        .detail-body p { margin-bottom: .8rem; color: var(--text-secondary); }
+        .detail-diagram { background: var(--bg-tertiary); border-radius: 12px; padding: 1.5rem; margin: 1rem 0; text-align: center; overflow: hidden; min-height: 120px; position: relative; }
+
+        /* CSS 动画图解 */
+        .plate-demo { display: flex; align-items: center; justify-content: center; gap: 0; height: 120px; }
+        .plate-block { width: 100px; height: 60px; border-radius: 8px; transition: transform 3s ease-in-out; position: relative; }
+        .plate-block.left { background: linear-gradient(135deg,#8B4513,#A0522D); transform: translateX(0); }
+        .plate-block.right { background: linear-gradient(225deg,#696969,#808080); transform: translateX(0); }
+        .plate-demo.animating .left { transform: translateX(30px); }
+        .plate-demo.animating .right { transform: translateX(-30px); }
+        .plate-crack { position: absolute; left: 50%; top: 0; bottom: 0; width: 3px; background: #ff4444; opacity: 0; transition: opacity .5s 1.5s; }
+        .plate-demo.animating .plate-crack { opacity: 1; }
+        .wave-demo { display: flex; align-items: flex-end; justify-content: center; gap: 2px; height: 100px; }
+        .wave-dot { width: 8px; height: 8px; background: var(--accent-primary); border-radius: 50%; animation: waveDot 2s ease-in-out infinite; }
+        @keyframes waveDot { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-40px); } }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo"><i class="fas fa-shield-halved"></i> 济小震 · 智防未来</div>
+        <ul class="nav-links">
+            <li><a href="index.html">首页</a></li>
+            <li><a href="knowledge.html">地震常识</a></li>
+            <li><a href="news.html">地震新闻</a></li>
+            <li><a href="emergency.html">应急求助</a></li>
+            <li><a href="game.html">地震小游戏</a></li>
+        </ul>
+        <div class="nav-actions">
+            <div class="user-area" id="userArea"></div>
+            <button class="theme-toggle" id="themeToggle"><i class="fas fa-moon"></i></button>
+        </div>
+    </nav>
+
+    <div class="ebook-container">
+        <header class="hero-card" style="text-align:center;padding:4rem 2rem;margin-bottom:1.5rem;background:linear-gradient(rgba(0,0,0,.5),rgba(0,0,0,.45)),url('/frontend/assets/data/hero-earthquake.jpg') center/cover no-repeat;border:none;border-radius:18px;">
+            <h1 style="font-size:2rem;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.5);">地震互动画册</h1>
+        </header>
+
+        <!-- 第一章 -->
+        <div class="chapter c1">
+            <div class="ch-header" onclick="toggleChapter(this)">
+                <span class="ch-tag">第一章</span>
+                <span class="ch-title">地球在"颤抖"——地震是什么？</span>
+                <span class="ch-sub">原理 · 成因 · 分布</span>
+                <span class="ch-arrow">▶</span>
+            </div>
+            <div class="ch-body">
+                <div class="nodes">
+                    <div class="node-card" onclick="openDetail('plate')" style="cursor:pointer;"><span class="node-icon">🌍</span><div class="node-title">板块构造</div><div class="node-desc">地球表面由十几块巨大的岩石圈板块组成，它们漂浮在软流圈上缓慢移动。板块之间的碰撞、分离和摩擦，是地震的根本原因。</div></div>
+                    <div class="node-card"><span class="node-icon">⛓️</span><div class="node-title" onclick="openDetail('elastic')" style="cursor:pointer;">弹性反跳理论</div><div class="node-desc">断层两侧的岩石像被弯曲的尺子，应力积累到临界点时突然断裂回弹，释放巨大的能量——这就是地震。</div></div>
+                    <div class="node-card"><span class="node-icon">〰️</span><div class="node-title" onclick="openDetail('waves')" style="cursor:pointer;">震源与震波</div><div class="node-desc">P 波（纵波）先到，像弹簧一样前后推拉；S 波（横波）后到，像摇晃的绳子。P 波和 S 波的时间差能告诉我们震源有多远。</div></div>
+                    <div class="node-card"><span class="node-icon">🗺️</span><div class="node-title" onclick="openDetail('belts')" style="cursor:pointer;">全球地震带</div><div class="node-desc">环太平洋地震带释放全球约 80% 的地震能量。中国位于两大地震带之间，是世界上地震灾害最严重的国家之一。</div></div>
+                </div>
+                <div class="interact-box">
+                    <span class="interact-label">💡 试试看</span>
+                    <span>想想你手边有什么东西是"弹性"的——橡皮筋、弹簧、甚至筷子。把它们弯到极限，突然松手的瞬间，那就是微缩版的"弹性反跳"。地震就是这么发生的，只是尺度大了亿万倍。</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 第二章 -->
+        <div class="chapter c2">
+            <div class="ch-header" onclick="toggleChapter(this)">
+                <span class="ch-tag">第二章</span>
+                <span class="ch-title">震感来了——地震如何被感知与测量？</span>
+                <span class="ch-sub">震级 · 烈度 · 预警</span>
+                <span class="ch-arrow">▶</span>
+            </div>
+            <div class="ch-body">
+                <div class="nodes">
+                    <div class="node-card"><span class="node-icon">📏</span><div class="node-title">震级 vs 烈度</div><div class="node-desc">震级衡量地震释放的能量（里氏震级每增加 1 级，能量大 32 倍）；烈度衡量地面感受到的摇晃程度——同一地震不同地点烈度不同。</div></div>
+                    <div class="node-card"><span class="node-icon">📟</span><div class="node-title">地震仪原理</div><div class="node-desc">地震仪的核心是一个"惯性摆"——地面晃动时，重锤因为惯性保持不动，记录笔相对地面画出了震动波形。你手机里的加速度计也是同样的原理。</div></div>
+                    <div class="node-card"><span class="node-icon">🚨</span><div class="node-title">地震预警系统</div><div class="node-desc">P 波比破坏性的 S 波快约 1.7 倍。在震中附近检测到 P 波后，系统可以在 S 波到达前发出几秒到几十秒的预警——这就是"黄金秒"。</div></div>
+                    <div class="node-card"><span class="node-icon">📉</span><div class="node-title">大森定律</div><div class="node-desc">主震发生后，余震的频次随时间快速衰减。第一天的余震可能占总数的三分之一，之后越来越少——这被称为"大森定律"。</div></div>
+                </div>
+                <div class="interact-box">
+                    <span class="interact-label">🎮 震级模拟器</span>
+                    <span>拖动滑块感受不同震级的效果</span>
+                </div>
+                <div class="shake-demo">
+                    <div class="shake-target" id="shakeTarget">🏠</div>
+                    <p style="font-size:.82rem;margin-top:8px;color:var(--text-secondary);" id="shakeDesc">Mw 5.0 — 大多数人能感觉到</p>
+                    <input type="range" class="shake-slider" id="shakeSlider" min="3" max="9" step="0.1" value="5" oninput="updateShake(this.value)">
+                </div>
+            </div>
+        </div>
+
+        <!-- 第三章 -->
+        <div class="chapter c3">
+            <div class="ch-header" onclick="toggleChapter(this)">
+                <span class="ch-tag">第三章</span>
+                <span class="ch-title">生死12秒——地震中如何自救？</span>
+                <span class="ch-sub">避险 · 逃生 · 救援</span>
+                <span class="ch-arrow">▶</span>
+            </div>
+            <div class="ch-body">
+                <div class="nodes">
+                    <div class="node-card"><span class="node-icon">🛡️</span><div class="node-title" onclick="openDetail('indoor')" style="cursor:pointer;">室内避险：伏地·掩护·抓牢</div><div class="node-desc">地震时不应试图跑动。立即蹲下（降低重心）、躲在坚固的桌子下或墙角（掩护要害）、抓住桌腿（防止移动）。这被称为"Drop, Cover, Hold On"。</div></div>
+                    <div class="node-card"><span class="node-icon">🚶</span><div class="node-title">不同场景的正确做法</div><div class="node-desc"><b>户外</b>：远离建筑、电线杆，蹲在开阔地。<b>驾车</b>：靠边停、避开桥下、留在车内。<b>海边</b>：感知强震后立即向高处撤离——可能发生海啸。</div></div>
+                    <div class="node-card"><span class="node-icon">🎒</span><div class="node-title">家庭应急包</div><div class="node-desc">水（每人每天 4L × 3 天）、干粮、手电筒、急救包、口哨、手机充电宝、重要证件复印件。定期检查食物有效期。</div></div>
+                    <div class="node-card"><span class="node-icon">🏗️</span><div class="node-title">为什么有些房子倒了？</div><div class="node-desc">抗震设计的核心是"延性"——让建筑在大震中变形但不倒塌。剪力墙、隔震支座、防震缝都是为了给建筑"预留变形空间"。</div></div>
+                </div>
+                <div class="interact-box">
+                    <span class="interact-label">🎮 12秒决策挑战</span>
+                    <span>地震发生！找到房间里的安全位置，点击它。（计时 12 秒）</span>
+                </div>
+                <div class="game-scene" id="gameScene">
+                    <button class="btn-primary" id="startGame" onclick="startGame()" style="margin-bottom:8px;"><i class="fas fa-play"></i> 开始挑战</button>
+                    <div class="game-timer" id="gameTimer" style="display:none;">12</div>
+                    <div class="game-room" id="gameRoom" style="display:none;position:relative;">
+                        <div class="furniture" style="left:8%;top:55%;width:22%;height:40%;background:#d4a574;" title="坚固木桌" data-safe="true">🪑</div>
+                        <div class="furniture wrong" style="left:65%;top:15%;width:20%;height:22%;background:#cde;" title="窗户" data-safe="false">🪟</div>
+                        <div class="furniture" style="left:42%;top:48%;width:30%;height:6%;background:#8B7355;" title="低矮茶几" data-safe="true">📦</div>
+                        <div class="furniture wrong" style="left:15%;top:40%;width:12%;height:30%;background:#e8d8c0;" title="高书柜" data-safe="false">📚</div>
+                        <div class="furniture wrong" style="left:72%;top:55%;width:15%;height:28%;background:#dde;" title="大吊灯下方" data-safe="false">💡</div>
+                        <div class="furniture" style="left:30%;top:70%;width:18%;height:8%;background:#c8b89a;" title="墙角蹲位" data-safe="true">⬛</div>
+                    </div>
+                    <div class="game-feedback" id="gameFeedback"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 第四章 -->
+        <div class="chapter c4">
+            <div class="ch-header" onclick="toggleChapter(this)">
+                <span class="ch-tag">第四章</span>
+                <span class="ch-title">震后的涟漪——次生灾害</span>
+                <span class="ch-sub">海啸 · 滑坡 · 液化</span>
+                <span class="ch-arrow">▶</span>
+            </div>
+            <div class="ch-body">
+                <div class="nodes">
+                    <div class="node-card"><span class="node-icon">🌊</span><div class="node-title">海啸的形成</div><div class="node-desc">海底地震使整片水柱垂直位移。在深海中波高可能不足 1 米却以飞机速度传播；靠近海岸时减速并急剧增高，可达 30 米以上。</div></div>
+                    <div class="node-card"><span class="node-icon">⛰️</span><div class="node-title">滑坡与堰塞湖</div><div class="node-desc">强震触发山体崩塌，堵塞河流形成堰塞湖。水位持续上涨后可能突然溃决，造成下游洪灾。2008 年汶川地震形成了 34 座堰塞湖。</div></div>
+                    <div class="node-card"><span class="node-icon">💧</span><div class="node-title">地基液化</div><div class="node-desc">松散饱水的沙土在剧烈震动下失去承载力，像液体一样流动。房屋就像建在稀泥上——这是很多地震中建筑损毁的隐形杀手。</div></div>
+                    <div class="node-card"><span class="node-icon">📐</span><div class="node-title">地表破裂</div><div class="node-desc">断层错动直接撕裂地面，位移可达数米。GPS 和卫星雷达可以测量毫米级的地表形变，帮助科学家理解断层运动。</div></div>
+                </div>
+                <div class="interact-box">
+                    <span class="interact-label">💡 你知道吗</span>
+                    <span>2011 年东日本大地震使本州岛向东南移动了 2.4 米，地球自转轴偏移了约 17 厘米——一次地震真的能改变整个星球的运动。</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 第五章 -->
+        <div class="chapter c5">
+            <div class="ch-header" onclick="toggleChapter(this)">
+                <span class="ch-tag">第五章</span>
+                <span class="ch-title">人类的回响——历史与未来</span>
+                <span class="ch-sub">历史 · 预测 · 减灾</span>
+                <span class="ch-arrow">▶</span>
+            </div>
+            <div class="ch-body">
+                <div class="timeline">
+                    <div class="timeline-item"><b>1906 · 旧金山大地震 (Mw 7.9)</b><br><span style="font-size:.82rem;color:var(--text-secondary);">推动了弹性反跳理论的提出，开启了现代地震学</span></div>
+                    <div class="timeline-item"><b>1923 · 关东大地震 (Mw 7.9)</b><br><span style="font-size:.82rem;color:var(--text-secondary);">14 万人遇难，促使日本建立全球最严格的抗震建筑规范</span></div>
+                    <div class="timeline-item"><b>1976 · 唐山大地震 (Mw 7.6)</b><br><span style="font-size:.82rem;color:var(--text-secondary);">24 万人遇难，是中国历史上伤亡最惨重的地震，推动了全国抗震标准的建立</span></div>
+                    <div class="timeline-item"><b>2008 · 汶川大地震 (Mw 7.9)</b><br><span style="font-size:.82rem;color:var(--text-secondary);">近 9 万人遇难，催生了中国地震预警系统的全面建设</span></div>
+                    <div class="timeline-item"><b>2011 · 东日本大地震 (Mw 9.0)</b><br><span style="font-size:.82rem;color:var(--text-secondary);">引发巨大海啸和福岛核事故，全球重新审视超巨震的防灾标准</span></div>
+                </div>
+                <div class="interact-box" style="margin-top:1rem;">
+                    <span class="interact-label">💡 思考</span>
+                    <span>地震预测仍然是科学界最大的挑战之一。但我们能做好两件事：<b>更坚固的建筑</b>和<b>更快的预警</b>。每一次大地震都在推动我们在这两条路上走得更远。</span>
+                </div>
+            </div>
+        </div>
+
+        <div style="text-align:center;padding:1rem 0 0;font-size:.82rem;color:var(--text-muted);">
+            <a href="knowledge.html" style="color:var(--accent-primary);"><i class="fas fa-arrow-left"></i> 返回知识中枢</a>
+        </div>
+    </div>
+
+    <!-- 知识详情弹窗 -->
+    <div class="detail-overlay" id="detailOverlay" onclick="if(event.target===this)closeDetail()">
+        <div class="detail-card"><div class="detail-card-header"><h2 id="detailTitle"></h2><button class="detail-close" onclick="closeDetail()"><i class="fas fa-times"></i></button></div>
+        <div class="detail-body" id="detailBody"></div></div>
+    </div>
+
+    <footer>&copy; 2025 济小震 · 科技防灾平台 | 知识守护生命</footer>
+
+    <script src="/frontend/assets/js/supabase.min.js"></script>
+    <script src="/frontend/assets/js/config.js"></script>
+    <script src="/frontend/assets/js/auth.js"></script>
+    <script src="/frontend/assets/js/common.js"></script>
+
+    <script>
+    // 章节折叠
+    function toggleChapter(header) {
+        const body = header.nextElementSibling;
+        const arrow = header.querySelector('.ch-arrow');
+        const isOpen = body.classList.contains('open');
+        document.querySelectorAll('.ch-body').forEach(b => b.classList.remove('open'));
+        document.querySelectorAll('.ch-arrow').forEach(a => a.classList.remove('open'));
+        if (!isOpen) { body.classList.add('open'); arrow.classList.add('open'); }
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+        // 所有知识卡片点开详情
+        document.querySelectorAll('.node-card').forEach(card => {
+            card.style.cursor = 'pointer';
+            card.addEventListener('click', function(e) {
+                if (e.target.closest('[onclick]')) return; // 已有 onclick 的不重复
+                const title = this.querySelector('.node-title')?.textContent || '';
+                const desc = this.querySelector('.node-desc')?.innerHTML || '';
+                const icon = this.querySelector('.node-icon')?.textContent || '';
+                showGenericDetail(icon + ' ' + title, desc);
+            });
+        });
+    });
+
+    function showGenericDetail(title, desc) {
+        document.getElementById('detailTitle').textContent = title;
+        document.getElementById('detailBody').innerHTML = '<p style="font-size:1rem;line-height:1.9;">' + desc + '</p><p style="font-size:.82rem;color:var(--text-muted);margin-top:1rem;border-top:1px solid var(--border-subtle);padding-top:.8rem;">📖 如需更详细的图解与数据，请告诉我们你想深入了解的方向。</p>';
+        document.getElementById('detailOverlay').classList.add('show');
+        document.body.style.overflow = 'hidden';
+    }
+
+    // 震级模拟器
+    function updateShake(val) {
+        const target = document.getElementById('shakeTarget');
+        const desc = document.getElementById('shakeDesc');
+        const intensity = Math.pow(2, (val - 3)) / 10;
+        target.style.transform = `translate(${(Math.random()-.5)*intensity*80}px, ${(Math.random()-.5)*intensity*80}px)`;
+        const labels = {3:'几乎无感',4:'像卡车经过',5:'多数人察觉',6:'物品移位',7:'站立困难',8:'建筑物受损',9:'灾难性破坏'};
+        desc.textContent = `Mw ${val} — ${labels[Math.round(val)] || ''}`;
+        if (val >= 7) target.style.color = '#ef4444';
+        else if (val >= 5) target.style.color = '#f59e0b';
+        else target.style.color = 'inherit';
+        clearTimeout(window._shakeTO);
+        window._shakeTO = setTimeout(() => { target.style.transform = 'translate(0,0)'; }, 800);
+    }
+
+    // 12秒决策游戏
+    let gameActive = false, gameTime = 12, gameInterval;
+    function startGame() {
+        if (gameActive) return;
+        gameActive = true; gameTime = 12;
+        document.getElementById('gameTimer').style.display = 'block';
+        document.getElementById('gameRoom').style.display = 'block';
+        document.getElementById('startGame').style.display = 'none';
+        document.getElementById('gameTimer').textContent = gameTime;
+        document.getElementById('gameFeedback').textContent = '';
+        document.querySelectorAll('#gameRoom .furniture').forEach(f => f.style.outline = 'none');
+        gameInterval = setInterval(() => {
+            gameTime--;
+            document.getElementById('gameTimer').textContent = gameTime;
+            if (gameTime <= 0) { endGame(false); }
+        }, 1000);
+        document.querySelectorAll('#gameRoom .furniture').forEach(f => {
+            f.onclick = function(e) {
+                if (!gameActive) return;
+                const safe = this.dataset.safe === 'true';
+                if (safe) { endGame(true); }
+                else { document.getElementById('gameFeedback').textContent = '❌ 危险！' + (this.title || '') + '——地震中这里可能造成伤害，再试试看'; this.style.outline = '3px solid #ef4444'; }
+            };
+        });
+    }
+    // ============ 知识详情弹窗 ============
+    const detailDB = {
+        'plate':{title:'板块构造 — 地球的外壳在移动',diagram:'<div class="plate-demo" id="pd"><div class="plate-block left"></div><div class="plate-crack"></div><div class="plate-block right"></div></div><p style="text-align:center;margin:.4rem 0 0;font-size:.8rem;color:var(--text-muted);">↓ 点击按钮模拟板块碰撞</p><p style="text-align:center"><button class="btn-secondary" onclick="document.getElementById(\'pd\').classList.toggle(\'animating\')" style="font-size:.78rem;padding:.4rem 1rem;">▶ 开始碰撞</button></p>',cont:`<p>地球从内到外分为地核、地幔、地壳。地壳和上地幔顶部合称"岩石圈"，厚度约 100km，破裂成十几块大小不等的<strong>板块</strong>。</p><p style="font-size:.95rem;font-weight:600;color:var(--accent-primary);">三种板块边界类型</p><p><strong>汇聚边界：</strong>两块板块相互碰撞。大洋板块俯冲到大陆板块之下形成海沟和火山弧（如日本、菲律宾）；两块大陆碰撞则形成山脉（如喜马拉雅山——印度板块正在以每年 5cm 的速度撞进欧亚板块）。</p><p><strong>离散边界：</strong>板块相互分离，地幔物质上涌冷却形成新地壳（如大西洋中脊，每年扩展约 2.5cm）。</p><p><strong>转换边界：</strong>板块水平错动（如美国加州圣安德烈亚斯断层）。</p><p style="font-size:.95rem;font-weight:600;color:var(--accent-primary);">中国为什么多地震？</p><p>中国位于欧亚板块、印度板块、太平洋板块三大板块交汇处。印度板块的持续北推形成了青藏高原，也使中国西部成为全球最活跃的地震区之一，贡献了全球约 15% 的 7 级以上地震。</p>`},
+        'elastic':{title:'弹性反跳理论 — 尺子弯到极限就断了',diagram:'<div style="text-align:center;padding:10px;"><div style="width:240px;height:10px;background:#A0522D;border-radius:5px;margin:0 auto;position:relative;overflow:visible;"><div style="position:absolute;left:0;top:-6px;width:12px;height:22px;background:#8B4513;border-radius:3px;animation:bend 4s ease-in-out infinite;"></div></div></div><style>@keyframes bend{0%,100%{left:0;transform:rotate(0)}45%{left:210px;transform:rotate(18deg)}50%{left:220px;transform:rotate(5deg)}55%{left:0;transform:rotate(0)}}</style><p style="text-align:center;margin-top:.3rem;font-size:.8rem;color:var(--text-muted);">岩石弯曲 → 积累应力 → 突然断裂 → 能量释放（地震）</p>',cont:`<p>1906年旧金山大地震后，美国地质学家H.F.Reid发现横跨圣安德烈亚斯断层的围栏被水平错动了数米。他提出了<strong>弹性反跳理论</strong>，至今仍是地震成因的核心模型。</p><p>断层两侧的岩石像被缓慢弯曲的尺子——地壳运动使应力不断积累，岩石发生弹性变形。当应力超过岩石的弹性极限时，断层突然断裂错动，变形瞬间"回跳"，累积的能量以<strong>地震波</strong>的形式释放。</p><p style="font-size:.95rem;font-weight:600;color:var(--accent-primary);">应力积累周期</p><p>大断层上的地震复发间隔可以是几十年到几千年。通过测量地壳形变速率和历史地震记录，科学家可以估算特定断层下一次大地震的概率。例如，圣安德烈亚斯断层南段已有 300 多年未发生大震——它正在"充电"。</p>`},
+        'waves':{title:'P波与S波 — 地震的两种"信使"',diagram:'<div style="display:flex;gap:30px;justify-content:center;align-items:end;padding:10px;"><div style="text-align:center;"><div style="display:flex;gap:3px;align-items:end;height:80px;">'+Array(20).fill(0).map((_,i)=>'<div style="width:6px;height:6px;background:var(--accent-primary);border-radius:50%;animation:pwave 1.5s ease-in-out infinite;animation-delay:'+(i*0.07)+'s;"></div>').join('')+'</div><p style="font-size:.75rem;margin-top:6px;">P波 · 压缩波（纵向振动）</p></div><div style="text-align:center;"><div style="display:flex;align-items:end;height:80px;gap:2px;">'+Array(15).fill(0).map((_,i)=>'<div style="width:6px;height:6px;background:#ef4444;border-radius:50%;animation:swave 1.5s ease-in-out infinite;animation-delay:'+(i*0.1)+'s;"></div>').join('')+'</div><p style="font-size:.75rem;margin-top:6px;">S波 · 剪切波（横向振动）</p></div></div><style>@keyframes pwave{0%,100%{transform:translateX(0)}50%{transform:translateX(-12px)}}@keyframes swave{0%,100%{transform:translateY(0)}50%{transform:translateY(-20px)}}</style>',cont:`<p style="font-size:.95rem;font-weight:600;color:var(--accent-primary);">P波（纵波，约5-7km/s）</p><p>P波是速度最快的地震波，像弹簧一样沿传播方向前后推拉介质。到达时你会先感觉到"嘭"的上下震动。<strong>地震预警的关键原理：</strong>P波比破坏性的S波快约1.7倍，检测到P波后可以在S波到达前争取几秒到几十秒的预警时间。</p><p style="font-size:.95rem;font-weight:600;color:var(--accent-primary);">S波（横波，约3-4km/s）</p><p>S波携带了地震的大部分能量。它的振动方向垂直于传播方向，造成左右摇晃——这是建筑物破坏的主要原因。液体不能传播S波，所以地核外核没有S波信号（这帮助科学家推断地核是液态的）。</p><p style="font-size:.95rem;font-weight:600;color:var(--accent-primary);">面波</p><p>P波和S波都在地球内部传播（体波）。还有一类沿地表传播的"面波"——地震中最常感受到的持续摇晃就是面波。面波速度更慢但振幅更大，对高层建筑尤其危险。</p>`},
+        'belts':{title:'全球地震带 — 地球的"伤痕线"',diagram:'<div style="text-align:center;padding:10px;"><div style="width:100%;max-width:500px;margin:0 auto;aspect-ratio:16/10;background:linear-gradient(135deg,#e8f0f8,#d0dde8);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;"><div style="font-size:3rem;">🌍🔥</div><div style="font-size:.82rem;color:#555;">全球地震带分布示意图</div><div style="font-size:.72rem;color:#999;">图片位：将你的地震带分布图放在此处<br>建议使用 USGS 或 CENC 公开数据图</div></div></div>',cont:`<p>全球地震并不是随机发生的，而是集中在几道狭长的<strong>"地震带"</strong>上。这些地震带恰好与板块边界完全重合——地震就是板块运动最直观的证据。</p><p style="font-size:.95rem;font-weight:600;color:var(--accent-primary);">环太平洋地震带（"火环"）</p><p>沿着太平洋边缘，从南美洲西海岸向北经过北美西海岸、阿拉斯加、日本列岛、菲律宾，一直延伸到新西兰。这条带上释放了全球约 <strong>80%</strong> 的地震能量。全球最深的海沟和最活跃的火山也都在这条带上。</p><p style="font-size:.95rem;font-weight:600;color:var(--accent-primary);">地中海-喜马拉雅地震带（阿尔卑斯带）</p><p>从地中海经土耳其、伊朗、中亚，一直延伸到喜马拉雅山脉和中国西南地区。这条带占全球释放能量的约 <strong>15%</strong>。2008年汶川地震、2015年尼泊尔地震都发生在这一带。</p><p style="font-size:.95rem;font-weight:600;color:var(--accent-primary);">中国的位置</p><p>中国恰好夹在两大地震带之间：东部受环太平洋带影响（台湾、华北），西部受喜马拉雅带影响（青藏高原、新疆、川滇）。因此中国是世界上地震灾害最频繁、最严重的国家之一。</p>`},
+        'indoor':{title:'室内避险 — "伏地、掩护、抓牢"的科学',diagram:'<div style="display:flex;gap:16px;justify-content:center;padding:10px;flex-wrap:wrap;"><div style="text-align:center;background:#fef2f2;border:2px solid #ef4444;border-radius:12px;padding:16px;width:130px;"><div style="font-size:2rem;">🪟</div><p style="font-size:.75rem;margin:4px 0 0;color:#dc2626;"><strong>✗ 窗户边</strong><br>碎玻璃</p></div><div style="text-align:center;background:#fef2f2;border:2px solid #ef4444;border-radius:12px;padding:16px;width:130px;"><div style="font-size:2rem;">📚</div><p style="font-size:.75rem;margin:4px 0 0;color:#dc2626;"><strong>✗ 高柜旁</strong><br>倾倒砸伤</p></div><div style="text-align:center;background:#f0fdf4;border:2px solid #22c55e;border-radius:12px;padding:16px;width:130px;"><div style="font-size:2rem;">🪑</div><p style="font-size:.75rem;margin:4px 0 0;color:#16a34a;"><strong>✓ 结实桌下</strong><br>掩护要害</p></div><div style="text-align:center;background:#f0fdf4;border:2px solid #22c55e;border-radius:12px;padding:16px;width:130px;"><div style="font-size:2rem;">⬛</div><p style="font-size:.75rem;margin:4px 0 0;color:#16a34a;"><strong>✓ 内墙墙角</strong><br>结构支撑</p></div></div>',cont:`<p>地震时的第一反应决定了生死。国际上公认的黄金法则只有六个字：<strong>伏地、掩护、抓牢</strong>（Drop, Cover, Hold On）。</p><p style="font-size:.95rem;font-weight:600;color:var(--accent-primary);">为什么要伏地？</p><p>强震时你根本站不住。试图跑动的人大多数在地震的头几秒就摔倒了。立即蹲下或趴下，降低重心，你就不会成为被抛掷的物体。</p><p style="font-size:.95rem;font-weight:600;color:var(--accent-primary);">为什么要掩护？</p><p>地震中大部分伤亡不是建筑倒塌造成的，而是<strong>掉落物</strong>——天花板、灯具、玻璃、书架上的物品。躲在结实的桌子下或用双臂护住头颈，可以抵挡这些"致命飞行物"。</p><p style="font-size:.95rem;font-weight:600;color:var(--accent-primary);">为什么要抓牢？</p><p>桌面在强震中会移动。如果你不抓住桌腿，桌子可能从你身上滑走。一手抓牢桌腿，一手护住后颈——这是经过数百万次地震验证的最优姿势。</p><p style="font-size:.95rem;font-weight:600;color:#ef4444;">⚠ 生命三角误区</p><p>网上流传的"生命三角"理论（躲在倒塌物旁边形成的空隙）已被全球地震工程学界证伪。现代建筑不会整体"压扁"，而是从连接处损坏——躲在倒塌物旁边反而更容易被碎片击中。</p>`}
+    };
+    function openDetail(key){
+        const d=detailDB[key];
+        if(!d)return;
+        document.getElementById('detailTitle').textContent=d.title;
+        document.getElementById('detailBody').innerHTML=(d.diagram||'')+d.cont;
+        document.getElementById('detailOverlay').classList.add('show');
+        document.body.style.overflow='hidden';
+    }
+    function closeDetail(){
+        document.getElementById('detailOverlay').classList.remove('show');
+        document.body.style.overflow='';
+    }
+    document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDetail()});
+
+    function endGame(won) {
+        clearInterval(gameInterval); gameActive = false;
+        document.getElementById('gameTimer').style.display = 'none';
+        document.getElementById('startGame').style.display = 'inline-block';
+        document.getElementById('startGame').innerHTML = '<i class="fas fa-redo"></i> 再试一次';
+        if (won) {
+            document.getElementById('gameFeedback').innerHTML = '✅ 正确！躲在坚固的家具下或墙角是地震中最安全的做法。记住：<b>伏地、掩护、抓牢</b>。';
+            document.getElementById('gameFeedback').style.color = '#16a34a';
+        } else {
+            document.getElementById('gameFeedback').innerHTML = '⏰ 时间到！记住：远离窗户（碎玻璃）、高大柜子（倾倒）、吊灯（坠落）。安全位置是 <b>坚固桌子下、墙角</b>。';
+            document.getElementById('gameFeedback').style.color = '#ef4444';
+        }
+    }
+    </script>
+</body>
+</html>
