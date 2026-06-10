@@ -10,7 +10,7 @@ class QuizModule {
     this.startBtn = null;
     this.userId = null;
     this.hasCompleted = false;
-    this.apiBaseUrl = 'http://localhost:5000/api';
+    this.apiBaseUrl = window.JiXiaoZhen?.apiBaseUrl || '/api';
   }
   async init() {
     this.titleElement = document.getElementById('quiz-title');

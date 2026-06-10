@@ -64,7 +64,7 @@
         const emptyDiv = document.getElementById('buildingEmpty');
         
         try {
-            const resp = await fetch('http://localhost:5000/api/knowledge/category/building');
+            const resp = await fetch('/api/knowledge/category/building');
             const data = await resp.json();
             
             if (data.success && data.data.length > 0) {

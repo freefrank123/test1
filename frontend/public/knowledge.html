@@ -230,7 +230,7 @@
             detailContent.innerHTML = '<p style="color:var(--text-muted);"><i class="fas fa-spinner fa-pulse"></i> 加载详情...</p>';
 
             try {
-                const resp = await fetch(`http://localhost:5000/api/knowledge/${id}`);
+                const resp = await fetch(`/api/knowledge/${id}`);
                 const data = await resp.json();
                 if (data.success && data.data) {
                     renderDetail(data.data);
@@ -253,7 +253,7 @@
                 listContent.innerHTML = '<p style="color:var(--text-muted);"><i class="fas fa-spinner fa-pulse"></i> 搜索中...</p>';
 
                 try {
-                    const resp = await fetch(`http://localhost:5000/api/knowledge/search?keyword=${encodeURIComponent(keyword)}`);
+                    const resp = await fetch(`/api/knowledge/search?keyword=${encodeURIComponent(keyword)}`);
                     const data = await resp.json();
                     if (data.success && data.data.length > 0) {
                         renderKnowledgeList(data.data);
@@ -347,7 +347,7 @@
                 listContent.innerHTML = '<p style="color:var(--text-muted);"><i class="fas fa-spinner fa-pulse"></i> 加载中...</p>';
 
                 try {
-                    const resp = await fetch(`http://localhost:5000/api/knowledge/category/${cat}`);
+                    const resp = await fetch(`/api/knowledge/category/${cat}`);
                     const data = await resp.json();
                     if (data.success && data.data.length > 0) {
                         renderKnowledgeList(data.data);
@@ -394,7 +394,7 @@
                     detailContent.innerHTML = '<p style="color:var(--text-muted);"><i class="fas fa-spinner fa-pulse"></i> 加载详情...</p>';
 
                     try {
-                        const resp = await fetch(`http://localhost:5000/api/knowledge/${id}`);
+                        const resp = await fetch(`/api/knowledge/${id}`);
                         const data = await resp.json();
                         if (data.success && data.data) {
                             renderDetail(data.data);

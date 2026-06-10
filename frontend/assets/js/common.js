@@ -1,7 +1,7 @@
 // ==================== 全局命名空间（必须在DOMContentLoaded之前定义） ====================
 // 不要覆盖已有的 JiXiaoZhen 属性（如 Auth、Supabase）
 window.JiXiaoZhen = window.JiXiaoZhen || {};
-window.JiXiaoZhen.apiBaseUrl = 'http://localhost:5000/api';
+window.JiXiaoZhen.apiBaseUrl = '/api';
 window.JiXiaoZhen.initQuiz = null;
 window.JiXiaoZhen.initChat = null;
 window.JiXiaoZhen.initGame = null;
