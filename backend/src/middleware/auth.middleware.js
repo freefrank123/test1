@@ -14,18 +14,28 @@ function getSupabaseAdmin() {
   return supabaseAdmin;
 }
 
+function getAnonId(req) {
+  const ip = (req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || req.ip || 'unknown').toString().split(',')[0].trim();
+  const ua = (req.headers['user-agent'] || '').substring(0, 50);
+  const raw = `anon-${ip}-${ua}`;
+  let hash = 0;
+  for (let i = 0; i < raw.length; i++) hash = ((hash << 5) - hash + raw.charCodeAt(i)) | 0;
+  return `anon-${Math.abs(hash).toString(36)}`;
+}
+
 async function authMiddleware(req, res, next) {
   const admin = getSupabaseAdmin();
+  
+  const authHeader = req.headers.authorization;
+  const hasToken = authHeader && authHeader.startsWith('Bearer ');
+  
   if (!admin) {
-    console.log('⚠️ Supabase 不可用，使用模拟用户ID');
-    req.user = { id: 'default-user-uuid-for-testing' };
+    req.user = { id: getAnonId(req), anonymous: true };
     return next();
   }
   
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    console.log('⚠️ 未提供认证令牌，使用模拟用户ID');
-    req.user = { id: 'default-user-uuid-for-testing' };
+  if (!hasToken) {
+    req.user = { id: getAnonId(req), anonymous: true };
     return next();
   }
   
@@ -33,16 +43,15 @@ async function authMiddleware(req, res, next) {
   try {
     const { data: { user }, error } = await admin.auth.getUser(token);
     if (error || !user) {
-      console.log('⚠️ 认证令牌无效，使用模拟用户ID');
-      req.user = { id: 'default-user-uuid-for-testing' };
+      console.warn('认证令牌无效，回退到匿名用户');
+      req.user = { id: getAnonId(req), anonymous: true };
       return next();
     }
     req.user = user;
     next();
   } catch (err) {
-    console.error('认证验证失败:', err);
-    console.log('⚠️ 使用模拟用户ID');
-    req.user = { id: 'default-user-uuid-for-testing' };
+    console.warn('认证验证异常，回退到匿名用户:', err.message);
+    req.user = { id: getAnonId(req), anonymous: true };
     next();
   }
 }
