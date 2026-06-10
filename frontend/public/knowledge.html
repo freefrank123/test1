@@ -332,6 +332,7 @@
         }
 
         function escAttr(s) { return s.replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+        function escHtml(s) { return escAttr(s); }
         function timeAgo(d) { const diff = Math.floor((Date.now()-new Date(d).getTime())/1000); return diff<60?'刚刚':diff<3600?Math.floor(diff/60)+'分钟前':diff<86400?Math.floor(diff/3600)+'小时前':Math.floor(diff/86400)+'天前'; }
 
         // 分类卡片点击（动态加载模式 — 队友扩展用）
