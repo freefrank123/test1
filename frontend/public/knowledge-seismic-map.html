@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>全球地震带 · 交互绘制 - 济小震</title>
+    <link rel="stylesheet" href="/frontend/assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .map-container { max-width: 1200px; margin: 0 auto; padding: 1rem; }
+        .map-stage { position: relative; background: #0a0d14; border-radius: 16px; overflow: hidden; border: 1px solid var(--border-subtle); }
+        #mapCanvas { display: block; width: 100%; height: auto; cursor: grab; }
+        #mapCanvas:active { cursor: grabbing; }
+        .map-controls { display: flex; gap: .6rem; padding: .8rem 1rem; background: var(--bg-tertiary); border-top: 1px solid var(--border-subtle); align-items: center; flex-wrap: wrap; }
+        .map-controls button { padding: .5rem 1rem; border-radius: 8px; border: 1px solid var(--border-subtle); cursor: pointer; font-size: .82rem; font-weight: 600; transition: all .2s; }
+        .btn-draw { background: var(--accent-primary); color: #fff; border-color: transparent; }
+        .btn-draw:hover { background: var(--accent-secondary); }
+        .btn-draw:disabled { opacity: .5; cursor: not-allowed; }
+        .btn-basemap { background: var(--bg-secondary); color: var(--text-primary); }
+        .btn-basemap.active { background: var(--accent-glow); border-color: var(--accent-primary); }
+        .btn-reset { background: var(--bg-secondary); color: var(--text-muted); }
+        .progress-bar { flex: 1; min-width: 100px; height: 6px; background: var(--bg-secondary); border-radius: 3px; overflow: hidden; }
+        .progress-fill { height: 100%; background: var(--accent-primary); width: 0%; transition: width .3s; }
+        .legend { display: flex; align-items: center; gap: 8px; font-size: .7rem; color: var(--text-muted); margin-left: auto; }
+        .legend-gradient { width: 80px; height: 10px; border-radius: 5px; background: linear-gradient(to right, #2b83ba, #abdda4, #fdae61, #d7191c); }
+        .belt-toggle { display: flex; gap: .4rem; flex-wrap: wrap; padding: 0 1rem .6rem; background: var(--bg-tertiary); }
+        .belt-tag { font-size: .7rem; padding: 3px 10px; border-radius: 12px; cursor: pointer; border: 1px solid var(--border-subtle); background: var(--bg-secondary); color: var(--text-muted); transition: all .15s; }
+        .belt-tag.active { border-color: var(--accent-primary); color: var(--accent-primary); background: var(--accent-glow); }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo"><i class="fas fa-shield-halved"></i> 济小震 · 智防未来</div>
+        <ul class="nav-links">
+            <li><a href="index.html">首页</a></li>
+            <li><a href="knowledge.html">地震常识</a></li>
+            <li><a href="news.html">地震新闻</a></li>
+            <li><a href="emergency.html">应急求助</a></li>
+            <li><a href="game.html">地震小游戏</a></li>
+        </ul>
+        <div class="nav-actions">
+            <div class="user-area" id="userArea"></div>
+            <button class="theme-toggle" id="themeToggle"><i class="fas fa-moon"></i></button>
+        </div>
+    </nav>
+
+    <div class="map-container">
+        <header class="hero-card" style="text-align:center;padding:1.5rem 2rem;margin-bottom:1.2rem;background:linear-gradient(135deg,#0f1f35,#1e3a5f);border-left:4px solid var(--accent-primary);">
+            <h1 style="font-size:1.5rem;margin-bottom:.2rem;color:#fff;">🌍 全球地震带 · 交互绘制</h1>
+            <p style="font-size:.82rem;color:rgba(255,255,255,.6);margin:0;">真实地震目录数据 · KDE 密度估计 · 四大板块边界可视化</p>
+        </header>
+
+        <div class="map-stage">
+            <canvas id="mapCanvas" width="2400" height="1200"></canvas>
+            <div class="map-controls">
+                <button class="btn-draw" id="btnDraw" onclick="startDraw()"><i class="fas fa-play"></i> 开始绘制</button>
+                <div class="progress-bar"><div class="progress-fill" id="drawProgress"></div></div>
+                <button class="btn-reset" onclick="resetMap()"><i class="fas fa-undo"></i></button>
+            </div>
+        </div>
+
+        <div style="text-align:center;padding:1rem 0 0;font-size:.82rem;color:var(--text-muted);">
+            拖拽平移 · 滚轮缩放 · 按住 Shift 框选放大<br>
+            <a href="knowledge-popular.html" style="color:var(--accent-primary);"><i class="fas fa-arrow-left"></i> 返回科普画册</a>
+        </div>
+    </div>
+
+    <footer>&copy; 2025 济小震 · 科技防灾平台 | 知识守护生命</footer>
+
+    <script src="/frontend/assets/js/supabase.min.js"></script>
+    <script src="/frontend/assets/js/config.js"></script>
+    <script src="/frontend/assets/js/auth.js"></script>
+    <script src="/frontend/assets/js/common.js"></script>
+
+    <script>
+    // ==================== 地震数据加载 ====================
+    // 从 CSV 加载真实地震目录（104k 点 → 采样至 30k）
+    let data = [];
+    async function loadEarthquakeData() {
+        try {
+            const resp = await fetch('/frontend/assets/data/eq_points.csv');
+            const text = await resp.text();
+            const lines = text.trim().split('\n').slice(1); // skip header
+            const step = Math.max(1, Math.floor(lines.length / 30000));
+            data = [];
+            for (let i = 0; i < lines.length; i += step) {
+                const parts = lines[i].split(',');
+                const lon = parseFloat(parts[0]);
+                const lat = parseFloat(parts[1]);
+                if (!isNaN(lon) && !isNaN(lat)) {
+                    data.push({ lon, lat });
+                }
+            }
+            console.log('✅ 加载了 ' + data.length + ' 个地震点');
+            document.getElementById('btnDraw').disabled = false;
+        } catch(e) {
+            console.error('地震数据加载失败:', e);
+        }
+    }
+    loadEarthquakeData();
+
+    // ==================== 画布与状态 ====================
+    const canvas = document.getElementById('mapCanvas');
+    const ctx = canvas.getContext('2d');
+    const W = 2400, H = 1200;  // 画布分辨率
+    const LON_MIN = -180, LON_MAX = 180, LAT_MIN = -85.05, LAT_MAX = 85.05;
+
+    let drawn = [];           // 已绘制的点索引
+    let drawing = false;
+    let drawInterval = null;
+    let drawSpeed = 200;      // 每批绘点数
+    let showBasemap = true;
+    let basemapImg = null;
+    let drawDone = false;
+
+    // 视图变换 (缩放/平移)
+    let viewX = 0, viewY = 0, viewZoom = 1;
+    let panStart = null;
+
+    // 预加载底图
+    basemapImg = new Image();
+    basemapImg.src = '/frontend/assets/data/world-basemap.png';
+
+    // ==================== 坐标转换 ====================
+    function lonLatToPixel(lon, lat) {
+        const px = (lon - LON_MIN) / (LON_MAX - LON_MIN) * W;
+        const py = (LAT_MAX - lat) / (LAT_MAX - LAT_MIN) * H;
+        return { x: px, y: py };
+    }
+
+    // ==================== 颜色映射 (Spectra) ====================
+    function spectralColor(t) {  // t: 0=蓝, 0.33=绿, 0.66=橙, 1=红
+        const stops = [
+            { pos: 0, r: 43, g: 131, b: 186 },    // 蓝
+            { pos: 0.33, r: 171, g: 221, b: 164 }, // 绿
+            { pos: 0.66, r: 253, g: 174, b: 97 },  // 橙
+            { pos: 1, r: 215, g: 25, b: 28 }       // 红
+        ];
+        let lo = stops[0], hi = stops[stops.length-1];
+        for (let i = 0; i < stops.length-1; i++) {
+            if (t >= stops[i].pos && t <= stops[i+1].pos) { lo = stops[i]; hi = stops[i+1]; break; }
+        }
+        const f = (t - lo.pos) / (hi.pos - lo.pos);
+        return {
+            r: Math.round(lo.r + (hi.r - lo.r) * f),
+            g: Math.round(lo.g + (hi.g - lo.g) * f),
+            b: Math.round(lo.b + (hi.b - lo.b) * f)
+        };
+    }
+
+    // ==================== 渲染 ====================
+    function render() {
+        ctx.clearRect(0, 0, W, H);
+        ctx.fillStyle = '#0a0d14';
+        ctx.fillRect(0, 0, W, H);
+
+        // 应用视图变换
+        ctx.save();
+        ctx.translate(viewX, viewY);
+        ctx.scale(viewZoom, viewZoom);
+
+        // 底图始终在点之下
+        if (basemapImg && drawn.length > 0) {
+            ctx.globalAlpha = showBasemap ? 0.75 : 0.2;
+            ctx.drawImage(basemapImg, 0, 0, W, H);
+            ctx.globalAlpha = 1;
+        }
+
+        // 绘制地震点 — 半透明叠加，密集区自然形成地震带
+        for (const idx of drawn) {
+            const p = data[idx];
+            const { x, y } = lonLatToPixel(p.lon, p.lat);
+            ctx.fillStyle = 'rgba(240,70,25,0.55)';
+            ctx.fillRect(x - 1, y - 1, 2, 2);
+        }
+
+        ctx.restore();
+    }
+
+    // ==================== 动画绘制 ====================
+    function startDraw() {
+        if (drawing) return;
+        if (!data.length) { alert('地震数据加载中，请稍候...'); return; }
+        drawing = true;
+        drawDone = false;
+        drawn = [];
+        document.getElementById('btnDraw').disabled = true;
+        document.getElementById('btnDraw').innerHTML = '<i class="fas fa-spinner fa-pulse"></i> 绘制中...';
+
+        // 混洗数据（避免顺序偏差）
+        const indices = data.map((_, i) => i);
+        for (let i = indices.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [indices[i], indices[j]] = [indices[j], indices[i]];
+        }
+
+        let cursor = 0;
+        const total = indices.length;
+        drawInterval = setInterval(() => {
+            const batch = Math.min(drawSpeed, total - cursor);
+            for (let i = 0; i < batch; i++) {
+                drawn.push(indices[cursor + i]);
+            }
+            cursor += batch;
+            document.getElementById('drawProgress').style.width = (cursor / total * 100) + '%';
+            render();
+
+            if (cursor >= total) {
+                clearInterval(drawInterval);
+                drawing = false;
+                drawDone = true;
+                document.getElementById('btnDraw').disabled = false;
+                document.getElementById('btnDraw').innerHTML = '<i class="fas fa-play"></i> 开始绘制';
+            }
+        }, 50);
+    }
+
+    function resetMap() {
+        if (drawInterval) clearInterval(drawInterval);
+        drawing = false; drawDone = false; drawn = [];
+        viewX = 0; viewY = 0; viewZoom = 1;
+        document.getElementById('drawProgress').style.width = '0%';
+        document.getElementById('btnDraw').disabled = false;
+        document.getElementById('btnDraw').innerHTML = '<i class="fas fa-play"></i> 开始绘制';
+        render();
+    }
+
+    // ==================== 鼠标交互 ====================
+    canvas.addEventListener('mousedown', e => {
+        panStart = { x: e.offsetX - viewX, y: e.offsetY - viewY };
+    });
+    canvas.addEventListener('mousemove', e => {
+        if (!panStart) return;
+        const dx = e.offsetX - panStart.x, dy = e.offsetY - panStart.y;
+        const maxX = (viewZoom - 1) * W, maxY = (viewZoom - 1) * H;
+        viewX = Math.max(-maxX, Math.min(0, dx));
+        viewY = Math.max(-maxY, Math.min(0, dy));
+        render();
+    });
+    canvas.addEventListener('mouseup', () => { panStart = null; });
+    canvas.addEventListener('mouseleave', () => { panStart = null; });
+    canvas.addEventListener('wheel', e => {
+        e.preventDefault();
+        const zoom = viewZoom * (e.deltaY < 0 ? 1.15 : 0.87);
+        viewZoom = Math.max(1, Math.min(5, zoom));
+        render();
+    }, { passive: false });
+
+    // 触摸
+    canvas.addEventListener('touchstart', e => {
+        if (e.touches.length === 1) panStart = { x: e.touches[0].clientX - viewX, y: e.touches[0].clientY - viewY };
+    });
+    canvas.addEventListener('touchmove', e => {
+        if (e.touches.length === 1 && panStart) {
+            viewX = e.touches[0].clientX - panStart.x;
+            viewY = e.touches[0].clientY - panStart.y;
+            render();
+        }
+    });
+    canvas.addEventListener('touchend', () => { panStart = null; });
+
+    // 响应式
+    window.addEventListener('resize', render);
+
+    // 初始渲染（空画布）
+    render();
+    </script>
+</body>
+</html>
