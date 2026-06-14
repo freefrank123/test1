@@ -12,8 +12,17 @@
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
     const response = await fetch(url, { ...options, headers });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.message || '请求失败');
+
+    const contentType = response.headers.get('content-type') || '';
+    const text = await response.text();
+    let data = {};
+    if (contentType.includes('application/json')) {
+      try { data = JSON.parse(text); } catch (_) { data = {}; }
+    }
+    if (!response.ok) {
+      const msg = data.message || (response.status === 502 ? '后端服务暂不可用' : `HTTP ${response.status}`);
+      throw new Error(msg);
+    }
     return data;
   }
 

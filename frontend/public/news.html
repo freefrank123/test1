@@ -218,10 +218,13 @@
                 const response = await fetch('/api/earthquake/latest');
                 
                 if (response.ok) {
-                    const data = await response.json();
-                    if (data.success && data.data) {
-                        displayEarthquakeData({ data: data.data });
-                        return;
+                    const contentType = response.headers.get('content-type') || '';
+                    if (contentType.includes('application/json')) {
+                        const data = await response.json();
+                        if (data.success && data.data) {
+                            displayEarthquakeData({ data: data.data });
+                            return;
+                        }
                     }
                 }
             } catch (error) {
@@ -236,9 +239,12 @@
                 });
                 
                 if (response.ok) {
-                    const data = await response.json();
-                    displayEarthquakeData(data);
-                    return;
+                    const contentType = response.headers.get('content-type') || '';
+                    if (contentType.includes('application/json')) {
+                        const data = await response.json();
+                        displayEarthquakeData(data);
+                        return;
+                    }
                 }
             } catch (error) {
                 console.error('获取实时数据失败，使用备用数据:', error);
