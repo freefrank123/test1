@@ -215,7 +215,7 @@
             
             try {
                 // 优先从后端服务获取数据（已修复，支持Wolfx API）
-                const response = await fetch('http://localhost:5000/api/earthquake/latest');
+                const response = await fetch('/api/earthquake/latest');
                 
                 if (response.ok) {
                     const data = await response.json();
@@ -374,7 +374,7 @@
                 params.append('limit', '50');
 
                 // 调用后端API
-                const response = await fetch(`http://localhost:5000/api/earthquake/search?${params.toString()}`);
+                const response = await fetch(`/api/earthquake/search?${params.toString()}`);
                 
                 if (response.ok) {
                     const data = await response.json();

@@ -1,6 +1,6 @@
 // 济小震 · 用户数据模块（个人资料 / 搜索历史 / 对话历史 / 测试积分）
 (function () {
-  const BASE = window.JiXiaoZhen?.apiBaseUrl || 'http://localhost:5000/api';
+  const BASE = window.JiXiaoZhen?.apiBaseUrl || '/api';
 
   // ==================== HTTP 辅助 ====================
 

@@ -50,14 +50,22 @@ const knowledgeService = {
   },
 
   async searchKnowledge(keyword) {
+    const safeKeyword = keyword
+      .replace(/[\\%_]/g, '')
+      .replace(/['"`)(,]/g, '')
+      .trim();
+    
+    if (!safeKeyword) return [];
+
+    const term = `%${safeKeyword}%`;
     const { data, error } = await getAdmin()
       .from('knowledge_articles')
       .select('*')
-      .or(`title.ilike.%${keyword}%,content.ilike.%${keyword}%,keywords.ilike.%${keyword}%`)
+      .or(`title.ilike.${term},content.ilike.${term},keywords.ilike.${term}`)
       .order('view_count', { ascending: false });
 
     if (error) throw error;
-    return data;
+    return data || [];
   },
 
   async createKnowledge(data) {

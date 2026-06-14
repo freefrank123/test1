@@ -64,7 +64,7 @@
         const emptyDiv = document.getElementById('firstaidEmpty');
         
         try {
-            const resp = await fetch('http://localhost:5000/api/knowledge/category/firstaid');
+            const resp = await fetch('/api/knowledge/category/firstaid');
             const data = await resp.json();
             
             if (data.success && data.data.length > 0) {
